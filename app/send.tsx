@@ -102,7 +102,7 @@ export default function SendScreen() {
                   <View style={styles.assetSelectorInfo}>
                     <Text style={[styles.assetSelectorSymbol, { color: theme.text.primary }]}>{selectedAsset.symbol}</Text>
                     <Text style={[styles.assetSelectorBalance, { color: theme.text.secondary }]}>
-                      Balance: {selectedAsset.balance.toLocaleString('en-US', { maximumFractionDigits: 4 })} {selectedAsset.symbol}
+                      Internal Wallex balance: {selectedAsset.balance.toLocaleString('en-US', { maximumFractionDigits: 4 })} {selectedAsset.symbol}
                     </Text>
                   </View>
                   <ChevronDown size={18} color={theme.text.secondary} />
@@ -167,12 +167,12 @@ export default function SendScreen() {
 
               <Animated.View entering={FadeInDown.delay(220).duration(400)} style={[styles.feeCard, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
                 <View style={styles.feeRow}>
-                  <Text style={[styles.feeLabel, { color: theme.text.secondary }]}>Network Fee</Text>
-                  <Text style={[styles.feeValue, { color: theme.text.primary }]}>0.000012 {selectedAsset.symbol}</Text>
+                  <Text style={[styles.feeLabel, { color: theme.text.secondary }]}>Internal Fee</Text>
+                  <Text style={[styles.feeValue, { color: theme.text.primary }]}>0.00 {selectedAsset.symbol}</Text>
                 </View>
                 <View style={styles.feeRow}>
-                  <Text style={[styles.feeLabel, { color: theme.text.secondary }]}>Est. Time</Text>
-                  <Text style={[styles.feeValue, { color: theme.text.primary }]}>3-5 seconds</Text>
+                  <Text style={[styles.feeLabel, { color: theme.text.secondary }]}>Ledger</Text>
+                  <Text style={[styles.feeValue, { color: theme.text.primary }]}>Wallex internal RXP</Text>
                 </View>
               </Animated.View>
             </>
@@ -192,8 +192,8 @@ export default function SendScreen() {
                 <View style={[styles.divider, { backgroundColor: theme.bg.border }]} />
                 {[
                   ['To', `${address.slice(0, 10)}...${address.slice(-8)}`],
-                  ['Network', selectedAsset.name],
-                  ['Fee', `0.000012 ${selectedAsset.symbol}`],
+                  ['Ledger', 'Wallex internal RXP'],
+                  ['Fee', `0.00 ${selectedAsset.symbol}`],
                   ['Note', note || '-'],
                 ].map(([k, v]) => (
                   <View key={k} style={[styles.confirmRow, { borderBottomColor: theme.bg.border }]}>

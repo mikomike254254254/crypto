@@ -9,6 +9,7 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
@@ -38,6 +39,7 @@ export default function OnboardingScreen() {
   const [email, setEmail] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(CARTOON_AVATARS[0].uri);
   const [focused, setFocused] = useState<string | null>(null);
+  const [authMode, setAuthMode] = useState<'login' | 'signup' | null>(null);
   const marquee = useSharedValue(0);
   const footerOpacity = useSharedValue(0.82);
 
@@ -74,6 +76,8 @@ export default function OnboardingScreen() {
     ? [theme.bg.primary, '#111827'] as [string, string]
     : ['#f8fafc', '#e0f2fe'] as [string, string];
 
+  const tickerItems = ['BTC $68,420', 'ETH $2,650', 'XRP $2.45', 'SOL $148.90', 'BNB $612', 'ADA $0.42', 'RXP KSh 180'];
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg.primary }]}>
       <LinearGradient colors={bgGradient} style={styles.gradient}>
@@ -81,75 +85,108 @@ export default function OnboardingScreen() {
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             {step === 0 && (
               <Animated.View entering={FadeInDown.duration(500)} style={styles.landing}>
-                <View style={styles.nav}>
+                <View style={[styles.topNav, { backgroundColor: '#ffffffdd', borderColor: '#e2e8f0' }]}>
                   <View style={styles.brandRow}>
                     <Image source={{ uri: WALLEX_BRAND.logoUrl }} style={styles.brandLogo} />
-                    <View>
-                      <Text style={[styles.brandName, { color: theme.text.primary }]}>wallex</Text>
-                      <Text style={[styles.domain, { color: theme.text.secondary }]}>{WALLEX_BRAND.siteName}</Text>
-                    </View>
+                    <Text style={styles.brandName}>wallex</Text>
                   </View>
-                  <TouchableOpacity style={[styles.adminPill, { borderColor: theme.bg.border, backgroundColor: theme.bg.card }]} onPress={() => router.push('/admin')}>
-                    <Text style={[styles.adminPillText, { color: theme.text.secondary }]}>Admin</Text>
-                  </TouchableOpacity>
+
+                  {SCREEN_WIDTH > 760 && (
+                    <View style={styles.navLinks}>
+                      {['Markets', 'Trade', 'Earn', 'Security'].map((item) => (
+                        <Text key={item} style={styles.navLink}>{item}</Text>
+                      ))}
+                    </View>
+                  )}
+
+                  <View style={styles.navActions}>
+                    <TouchableOpacity style={styles.loginBtn} onPress={() => setAuthMode('login')}>
+                      <Text style={styles.loginBtnText}>Log in</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.openBtn} onPress={() => setAuthMode('signup')}>
+                      <Text style={styles.openBtnText}>Open Wallet</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
-                <View style={styles.heroGrid}>
-                  <View style={styles.heroCopy}>
-                    <Text style={[styles.eyebrow, { color: theme.accent[500] }]}>Crypto wallet for Africa, Asia, Europe, and the USA</Text>
-                    <Text style={[styles.heroTitle, { color: theme.text.primary }]}>Your crypto. Simply secure.</Text>
-                    <Text style={[styles.heroBody, { color: theme.text.secondary }]}>
-                      Trade, hold, reward, verify KYC, and transfer RXP with a cleaner Wallex wallet experience.
-                    </Text>
+                <LinearGradient colors={['#f8fafc', '#e0f2fe']} style={styles.heroSection}>
+                  <View style={styles.heroGrid}>
+                    <View style={styles.heroCopy}>
+                      <Text style={styles.heroTitle}>
+                        Your crypto.{'\n'}
+                        <Text style={styles.titleAccent}>Simply secure.</Text>
+                      </Text>
+                      <Text style={styles.heroBody}>
+                        Trade, hold, and earn with confidence. Institutional-grade security with a beautiful interface.
+                      </Text>
 
-                    <View style={styles.heroActions}>
-                      <TouchableOpacity style={styles.primaryBtn} onPress={() => setStep(1)} activeOpacity={0.86}>
+                      <TouchableOpacity style={styles.primaryBtn} onPress={() => setAuthMode('signup')} activeOpacity={0.86}>
                         <Text style={styles.primaryBtnText}>Open Wallet</Text>
                         <ArrowRight size={18} color="#fff" />
                       </TouchableOpacity>
-                      <TouchableOpacity style={[styles.secondaryBtn, { borderColor: theme.bg.border, backgroundColor: theme.bg.card }]} onPress={() => router.push('/admin')} activeOpacity={0.82}>
-                        <Shield size={17} color={theme.text.secondary} />
-                        <Text style={[styles.secondaryBtnText, { color: theme.text.secondary }]}>Admin Panel</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
 
-                  <View style={[styles.heroCard, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
-                    <Image source={{ uri: WALLEX_BRAND.heroImageUrl }} style={styles.heroImage} />
-                    <View style={styles.rxpFloat}>
-                      <Text style={styles.rxpFloatLabel}>RXP RATE</Text>
-                      <Text style={styles.rxpFloatValue}>KSh {WALLEX_BRAND.rxpRateKes}</Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={[styles.marketMarquee, { borderColor: theme.bg.border, backgroundColor: theme.bg.card }]}>
-                  <Animated.View style={[styles.marketTrack, marqueeStyle]}>
-                    {[...POPULAR_MARKETS, ...POPULAR_MARKETS, ...POPULAR_MARKETS].map((coin, index) => (
-                      <View key={`${coin.symbol}-${index}`} style={[styles.coinBadge, { backgroundColor: theme.isDark ? '#ffffff10' : '#f1f5f9' }]}>
-                        <Image source={{ uri: coin.icon }} style={styles.coinIcon} />
+                      <View style={styles.securityBadges}>
+                        <View style={styles.securityBadge}>
+                          <Shield size={15} color="#10b981" />
+                          <Text style={styles.securityBadgeText}>Bank-grade security</Text>
+                        </View>
+                        <View style={styles.securityBadge}>
+                          <Shield size={15} color="#10b981" />
+                          <Text style={styles.securityBadgeText}>2FA + MPC</Text>
+                        </View>
                       </View>
+                    </View>
+
+                    <View style={styles.phoneWrap}>
+                      <Image source={{ uri: WALLEX_BRAND.heroImageUrl }} style={styles.phoneImage} />
+                      <View style={styles.priceCard}>
+                        <Text style={styles.priceLabel}>XRP PRICE</Text>
+                        <Text style={styles.priceValue}>$2.45</Text>
+                        <Text style={styles.priceChange}>+2.8%</Text>
+                      </View>
+                    </View>
+                  </View>
+                </LinearGradient>
+
+                <View style={styles.tickerWrap}>
+                  <Animated.View style={[styles.tickerTrack, marqueeStyle]}>
+                    {[...tickerItems, ...tickerItems, ...tickerItems].map((coin, index) => (
+                      <Text key={`${coin}-${index}`} style={styles.tickerText}>{coin}</Text>
                     ))}
                   </Animated.View>
                 </View>
 
-                <View style={styles.trustRow}>
+                <View style={styles.featuresSection}>
                   {[
-                    ['Bank-grade security', '2FA and KYC-ready flows'],
-                    ['Live market data', 'FreeCryptoAPI-ready monitoring'],
-                    ['Support desk', WALLEX_BRAND.supportEmail],
+                    ['Lightning Fast', 'Instant Wallex RXP transfers and trading workflows.'],
+                    ['Institutional Security', 'KYC-ready controls, admin review, and wallet monitoring.'],
+                    ['Earn Rewards', 'Admin can reward users with internal RXP balances.'],
                   ].map(([title, body]) => (
-                    <View key={title} style={[styles.trustItem, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
-                      <WalletCards size={18} color={theme.accent[500]} />
-                      <Text style={[styles.trustTitle, { color: theme.text.primary }]}>{title}</Text>
-                      <Text style={[styles.trustBody, { color: theme.text.secondary }]}>{body}</Text>
+                    <View key={title} style={styles.featureCard}>
+                      <View style={styles.featureIcon}>
+                        <WalletCards size={24} color="#0284c7" />
+                      </View>
+                      <Text style={styles.featureTitle}>{title}</Text>
+                      <Text style={styles.featureBody}>{body}</Text>
                     </View>
                   ))}
                 </View>
 
-                <Animated.View style={[styles.footer, footerStyle]}>
-                  <Text style={[styles.footerText, { color: theme.text.secondary }]}>
-                    Wallex.online | Markets | Wallet | KYC | Rewards | {WALLEX_BRAND.supportEmail}
+                <View style={styles.finalCta}>
+                  <Text style={styles.finalTitle}>Start trading securely today</Text>
+                  <TouchableOpacity style={styles.finalButton} onPress={() => setAuthMode('signup')}>
+                    <Text style={styles.finalButtonText}>Open Wallet - It's Free</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.finalSupport}>{WALLEX_BRAND.supportEmail}</Text>
+                </View>
+
+                <Animated.View style={[styles.landingFooter, footerStyle]}>
+                  <View style={styles.brandRow}>
+                    <Image source={{ uri: WALLEX_BRAND.logoUrl }} style={styles.footerLogo} />
+                    <Text style={styles.footerBrand}>wallex</Text>
+                  </View>
+                  <Text style={styles.footerText}>
+                    (c) 2026 Wallex. All rights reserved. Support: {WALLEX_BRAND.supportEmail}
                   </Text>
                 </Animated.View>
               </Animated.View>
@@ -291,6 +328,43 @@ export default function OnboardingScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
+
+      <Modal visible={authMode !== null} transparent animationType="fade" onRequestClose={() => setAuthMode(null)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.authModal}>
+            <Text style={styles.authTitle}>{authMode === 'login' ? 'Log in' : 'Create account'}</Text>
+            <TextInput
+              style={styles.authInput}
+              placeholder={authMode === 'login' ? 'Email or wallet' : 'Email address'}
+              placeholderTextColor="#94a3b8"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            {authMode === 'login' && (
+              <TextInput
+                style={styles.authInput}
+                placeholder="Password"
+                placeholderTextColor="#94a3b8"
+                secureTextEntry
+              />
+            )}
+            <TouchableOpacity
+              style={styles.authSubmit}
+              onPress={() => {
+                setAuthMode(null);
+                setStep(1);
+              }}
+            >
+              <Text style={styles.authSubmitText}>{authMode === 'login' ? 'Log in' : 'Open Wallet'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.authClose} onPress={() => setAuthMode(null)}>
+              <Text style={styles.authCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -300,29 +374,63 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   gradient: { flex: 1 },
   content: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 22, justifyContent: 'flex-start' },
-  landing: { gap: 20, paddingBottom: 24 },
-  nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  landing: { gap: 0, paddingBottom: 0, backgroundColor: '#ffffff' },
+  topNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 0, paddingHorizontal: 18, paddingVertical: 14, gap: 14 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brandLogo: { width: 44, height: 44, borderRadius: 12 },
-  brandName: { fontSize: 29, fontFamily: 'Inter-Bold', letterSpacing: 0 },
+  brandLogo: { width: 36, height: 36, borderRadius: 10 },
+  brandName: { fontSize: 29, fontFamily: 'Inter-Bold', letterSpacing: 0, color: '#0f172a' },
   domain: { fontSize: 12, fontFamily: 'Inter-Medium', marginTop: -2 },
+  navLinks: { flexDirection: 'row', alignItems: 'center', gap: 22 },
+  navLink: { fontSize: 13, fontFamily: 'Inter-SemiBold', color: '#475569' },
+  navActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  loginBtn: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 22, paddingHorizontal: 18, paddingVertical: 10, backgroundColor: '#ffffff' },
+  loginBtnText: { fontSize: 13, fontFamily: 'Inter-SemiBold', color: '#334155' },
+  openBtn: { borderRadius: 22, paddingHorizontal: 20, paddingVertical: 11, backgroundColor: '#0f172a' },
+  openBtnText: { fontSize: 13, fontFamily: 'Inter-SemiBold', color: '#ffffff' },
   adminPill: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 9 },
   adminPillText: { fontSize: 12, fontFamily: 'Inter-SemiBold' },
-  heroGrid: { gap: 22 },
-  heroCopy: { gap: 14 },
+  heroSection: { paddingHorizontal: 22, paddingTop: 42, paddingBottom: 42 },
+  heroGrid: { gap: 28 },
+  heroCopy: { gap: 18, alignItems: 'flex-start' },
   eyebrow: { fontSize: 12, fontFamily: 'Inter-Bold', textTransform: 'uppercase', letterSpacing: 0.8 },
-  heroTitle: { fontSize: 48, fontFamily: 'Inter-Bold', lineHeight: 52, letterSpacing: 0 },
-  heroBody: { fontSize: 16, fontFamily: 'Inter-Regular', lineHeight: 24, maxWidth: 560 },
+  heroTitle: { fontSize: 56, fontFamily: 'Inter-Bold', lineHeight: 60, letterSpacing: 0, color: '#0f172a' },
+  titleAccent: { color: '#0284c7' },
+  heroBody: { fontSize: 18, fontFamily: 'Inter-Regular', lineHeight: 28, maxWidth: 520, color: '#475569' },
   heroActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#0f172a', paddingHorizontal: 22, paddingVertical: 15, borderRadius: 18 },
-  primaryBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Inter-SemiBold' },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#0f172a', paddingHorizontal: 30, paddingVertical: 16, borderRadius: 28, alignSelf: 'flex-start' },
+  primaryBtnText: { color: '#fff', fontSize: 17, fontFamily: 'Inter-SemiBold' },
   secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 14, borderRadius: 18, borderWidth: 1 },
   secondaryBtnText: { fontSize: 14, fontFamily: 'Inter-SemiBold' },
+  securityBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 22, marginTop: 8 },
+  securityBadge: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  securityBadgeText: { fontSize: 12, fontFamily: 'Inter-SemiBold', color: '#64748b' },
+  phoneWrap: { alignItems: 'center', justifyContent: 'center', position: 'relative', paddingTop: 20 },
+  phoneImage: { width: Math.min(320, SCREEN_WIDTH - 80), height: 390, borderRadius: 48, borderWidth: 8, borderColor: '#ffffff' },
+  priceCard: { position: 'absolute', top: 0, right: 18, backgroundColor: '#ffffff', borderRadius: 22, paddingHorizontal: 16, paddingVertical: 14, borderWidth: 1, borderColor: '#e2e8f0' },
+  priceLabel: { fontSize: 10, fontFamily: 'Inter-SemiBold', color: '#64748b', textAlign: 'center' },
+  priceValue: { fontSize: 24, fontFamily: 'Inter-Bold', color: '#059669', textAlign: 'center', marginTop: 2 },
+  priceChange: { fontSize: 12, fontFamily: 'Inter-SemiBold', color: '#10b981', textAlign: 'center', marginTop: 2 },
   heroCard: { borderRadius: 28, borderWidth: 1, padding: 8, position: 'relative', overflow: 'hidden' },
   heroImage: { width: '100%', height: Math.min(360, SCREEN_WIDTH * 0.58), borderRadius: 22 },
   rxpFloat: { position: 'absolute', right: 18, bottom: 18, backgroundColor: '#ffffffee', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 12 },
   rxpFloatLabel: { fontSize: 10, fontFamily: 'Inter-Bold', color: '#64748b', letterSpacing: 0.7 },
   rxpFloatValue: { fontSize: 20, fontFamily: 'Inter-Bold', color: '#0f172a', marginTop: 2 },
+  tickerWrap: { overflow: 'hidden', backgroundColor: '#f8fafc', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#e2e8f0', paddingVertical: 14 },
+  tickerTrack: { flexDirection: 'row', gap: 44, width: SCREEN_WIDTH * 4 },
+  tickerText: { fontSize: 13, fontFamily: 'Inter-SemiBold', color: '#64748b' },
+  featuresSection: { paddingHorizontal: 22, paddingVertical: 42, gap: 14 },
+  featureCard: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 24, padding: 24, backgroundColor: '#ffffff', gap: 10 },
+  featureIcon: { width: 46, height: 46, borderRadius: 16, backgroundColor: '#e0f2fe', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  featureTitle: { fontSize: 22, fontFamily: 'Inter-Bold', color: '#0f172a' },
+  featureBody: { fontSize: 14, fontFamily: 'Inter-Regular', color: '#64748b', lineHeight: 20 },
+  finalCta: { backgroundColor: '#0f172a', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 54, gap: 18 },
+  finalTitle: { fontSize: 38, fontFamily: 'Inter-Bold', color: '#ffffff', textAlign: 'center', lineHeight: 44 },
+  finalButton: { backgroundColor: '#ffffff', borderRadius: 30, paddingHorizontal: 32, paddingVertical: 17 },
+  finalButtonText: { fontSize: 18, fontFamily: 'Inter-SemiBold', color: '#0f172a' },
+  finalSupport: { fontSize: 12, fontFamily: 'Inter-Medium', color: '#94a3b8' },
+  landingFooter: { backgroundColor: '#ffffff', borderTopWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 22, paddingVertical: 30, gap: 14, alignItems: 'center' },
+  footerLogo: { width: 32, height: 32, borderRadius: 9 },
+  footerBrand: { fontSize: 28, fontFamily: 'Inter-Bold', color: '#0f172a' },
   marketMarquee: { overflow: 'hidden', borderWidth: 1, borderRadius: 18, paddingVertical: 12 },
   marketTrack: { flexDirection: 'row', gap: 18, width: SCREEN_WIDTH * 4 },
   coinBadge: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
@@ -332,7 +440,7 @@ const styles = StyleSheet.create({
   trustTitle: { fontSize: 14, fontFamily: 'Inter-Bold' },
   trustBody: { fontSize: 12, fontFamily: 'Inter-Regular', lineHeight: 17 },
   footer: { alignItems: 'center', paddingVertical: 8 },
-  footerText: { fontSize: 11, fontFamily: 'Inter-Medium', textAlign: 'center', lineHeight: 17 },
+  footerText: { fontSize: 11, fontFamily: 'Inter-Medium', textAlign: 'center', lineHeight: 17, color: '#64748b' },
   formContainer: { gap: 4, paddingBottom: 40 },
   stepTitle: { fontSize: 28, fontFamily: 'Inter-Bold', marginBottom: 6, letterSpacing: 0 },
   stepSub: { fontSize: 14, fontFamily: 'Inter-Regular', marginBottom: 28, lineHeight: 20 },
@@ -360,4 +468,12 @@ const styles = StyleSheet.create({
   nextBtn: { width: '100%', borderRadius: 18, overflow: 'hidden' },
   nextBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16 },
   nextBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter-SemiBold' },
+  modalOverlay: { flex: 1, backgroundColor: '#00000099', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  authModal: { width: '100%', maxWidth: 420, backgroundColor: '#ffffff', borderRadius: 28, padding: 24, borderWidth: 1, borderColor: '#e2e8f0', gap: 14 },
+  authTitle: { fontSize: 28, fontFamily: 'Inter-Bold', color: '#0f172a', marginBottom: 6 },
+  authInput: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 15, fontSize: 15, fontFamily: 'Inter-Regular', color: '#0f172a' },
+  authSubmit: { backgroundColor: '#0f172a', borderRadius: 18, alignItems: 'center', paddingVertical: 15, marginTop: 4 },
+  authSubmitText: { color: '#ffffff', fontSize: 15, fontFamily: 'Inter-SemiBold' },
+  authClose: { alignItems: 'center', paddingVertical: 4 },
+  authCloseText: { color: '#64748b', fontSize: 13, fontFamily: 'Inter-SemiBold' },
 });
