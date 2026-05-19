@@ -9,10 +9,10 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return send(res, 204, {});
   if (req.method !== 'POST') return send(res, 405, { error: 'Method not allowed' });
 
-  const { rxpAmount, email, wallet } = req.body || {};
-  const units = Number(rxpAmount);
+  const { xrpAmount, email, wallet } = req.body || {};
+  const units = Number(xrpAmount);
 
-  if (!units || units <= 0) return send(res, 400, { error: 'Enter a valid RXP amount' });
+  if (!units || units <= 0) return send(res, 400, { error: 'Enter a valid XRP amount' });
 
   const amountKes = Math.round(units * 180);
   const reference = `WLX-${Date.now()}`;
@@ -44,13 +44,13 @@ module.exports = async function handler(req, res) {
         amount: amountKes,
         currency: 'KES',
         reference,
-        description: `${units} RXP on Wallex`,
+        description: `${units} XRP on Wallex`,
         customer: { email, wallet },
         return_url: `${origin}/buy`,
         metadata: {
           wallet,
-          rxp_amount: units,
-          product: 'Wallex RXP',
+          xrp_amount: units,
+          product: 'Wallex XRP',
         },
       }),
     });
@@ -67,8 +67,9 @@ module.exports = async function handler(req, res) {
   }
 
   return send(res, 202, {
+    checkoutUrl: `https://www.payflee.com/?amount=${amountKes}&currency=KES&reference=${reference}`,
     amountKes,
     reference,
-    message: 'Payflee checkout is ready for server configuration. Add PAYFLEE_API_URL or PAYFLEE_PAYMENT_LINK_URL in Vercel.',
+    message: 'Payment request created. Add a Payflee payment link or API URL in Vercel to open a direct hosted checkout.',
   });
 };

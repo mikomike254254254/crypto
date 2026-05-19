@@ -20,7 +20,7 @@ import { useUser } from '@/context/UserContext';
 import { CryptoColors } from '@/constants/colors';
 import { CRYPTO_ASSETS } from '@/constants/crypto';
 import { recordWalletTransfer } from '@/lib/supabase';
-import { isRxpWalletAddress } from '@/lib/wallet';
+import { isRippleWalletAddress } from '@/lib/wallet';
 
 export default function SendScreen() {
   const router = useRouter();
@@ -36,10 +36,10 @@ export default function SendScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const usdValue = parseFloat(amount || '0') * selectedAsset.price;
-  const cleanAddress = address.trim().toLowerCase();
+  const cleanAddress = address.trim();
   const amountValue = parseFloat(amount || '0');
-  const isValid = selectedAsset.symbol === 'RXP'
-    ? isRxpWalletAddress(cleanAddress) && amountValue > 0
+  const isValid = selectedAsset.symbol === 'XRP'
+    ? isRippleWalletAddress(address.trim()) && amountValue > 0
     : address.length > 10 && amountValue > 0;
 
   const handleSend = async () => {
@@ -91,7 +91,7 @@ export default function SendScreen() {
           <TouchableOpacity onPress={() => (confirmed ? setConfirmed(false) : router.back())} style={[styles.backBtn, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
             <ArrowLeft size={22} color={theme.text.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.text.primary }]}>{confirmed ? 'Confirm Send' : 'Send RXP'}</Text>
+          <Text style={[styles.headerTitle, { color: theme.text.primary }]}>{confirmed ? 'Confirm Send' : 'Send XRP'}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -119,7 +119,7 @@ export default function SendScreen() {
                 <View style={[styles.inputWrapper, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
                   <TextInput
                     style={[styles.input, { color: theme.text.primary }]}
-                    placeholder="rxp_member_1a2b3c4"
+                    placeholder="rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
                     placeholderTextColor={theme.text.muted}
                     value={address}
                     onChangeText={setAddress}
@@ -177,10 +177,10 @@ export default function SendScreen() {
                 </View>
                 <View style={styles.feeRow}>
                   <Text style={[styles.feeLabel, { color: theme.text.secondary }]}>Ledger</Text>
-                  <Text style={[styles.feeValue, { color: theme.text.primary }]}>Wallex internal RXP wallet</Text>
+                  <Text style={[styles.feeValue, { color: theme.text.primary }]}>Wallex XRP wallet</Text>
                 </View>
                 <Text style={[styles.feeNote, { color: theme.text.secondary }]}>
-                  RXP is your Wallex internal balance. It is not external XRP unless Wallex later connects a real chain bridge.
+                  XRP moves between Wallex XRP wallets first. External settlement can be connected later through the live ledger bridge.
                 </Text>
               </Animated.View>
             </>
@@ -200,7 +200,7 @@ export default function SendScreen() {
                 <View style={[styles.divider, { backgroundColor: theme.bg.border }]} />
                 {[
                   ['To', `${address.slice(0, 10)}...${address.slice(-8)}`],
-                  ['Ledger', 'Wallex internal RXP wallet'],
+                  ['Ledger', 'Wallex XRP wallet'],
                   ['Fee', `0.00 ${selectedAsset.symbol}`],
                   ['Note', note || '-'],
                 ].map(([k, v]) => (

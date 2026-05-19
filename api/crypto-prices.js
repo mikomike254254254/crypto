@@ -4,7 +4,7 @@ const FALLBACK = [
   { symbol: 'XRP', price: 2.45, change24h: 2.8 },
   { symbol: 'SOL', price: 148.9, change24h: 4.4 },
   { symbol: 'BNB', price: 612, change24h: 0.5 },
-  { symbol: 'RXP', price: 1.39, change24h: 0 },
+  { symbol: 'XRP', price: 1.39, change24h: 0.8 },
 ];
 
 module.exports = async function handler(req, res) {

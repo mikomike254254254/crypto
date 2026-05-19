@@ -5,8 +5,8 @@ import { TrendingUp, ArrowDownLeft, Shield, TriangleAlert } from 'lucide-react-n
 import { useTheme } from '@/context/ThemeContext';
 
 const NOTIFICATIONS = [
-  { id: '1', type: 'price', title: 'RXP up 0.8%', body: 'RXP rewards are active in your Wallex wallet.', time: '2m ago', read: false },
-  { id: '2', type: 'receive', title: 'You received 500 RXP', body: 'Reward transaction confirmed inside Wallex.', time: '2h ago', read: false },
+  { id: '1', type: 'price', title: 'XRP updated', body: 'Daily XRP value refresh is active in your Wallex wallet.', time: '2m ago', read: false },
+  { id: '2', type: 'receive', title: 'You received XRP', body: 'Wallet credit confirmed inside Wallex.', time: '2h ago', read: false },
   { id: '3', type: 'security', title: 'New device login', body: 'A new device signed into your Wallex account.', time: '5h ago', read: true },
   { id: '4', type: 'alert', title: 'Price alert triggered', body: 'BTC crossed $67,000 threshold you set.', time: '1d ago', read: true },
   { id: '5', type: 'price', title: 'SOL up 5.11%', body: 'Solana is up 5.11% today.', time: '1d ago', read: true },

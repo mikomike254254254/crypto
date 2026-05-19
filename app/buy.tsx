@@ -22,14 +22,14 @@ export default function BuyScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const { profile } = useUser();
-  const [rxpAmount, setRxpAmount] = useState('50');
+  const [xrpAmount, setXrpAmount] = useState('50');
   const [email, setEmail] = useState(profile.email);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ message?: string; reference?: string; checkoutUrl?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const units = Number(rxpAmount || 0);
-  const totalKes = units * WALLEX_BRAND.rxpRateKes;
+  const units = Number(xrpAmount || 0);
+  const totalKes = units * WALLEX_BRAND.xrpRateKes;
   const platformFee = Math.round(totalKes * 0.2);
   const estimatedCardTotal = totalKes + platformFee;
   const isValid = units > 0 && email.includes('@');
@@ -47,12 +47,21 @@ export default function BuyScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          rxpAmount: units,
+          xrpAmount: units,
           email,
           wallet: profile.wallet,
         }),
       });
-      const data = await response.json();
+      const text = await response.text();
+      let data: { message?: string; reference?: string; checkoutUrl?: string; error?: string } = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = {
+          checkoutUrl: `https://www.payflee.com/?amount=${Math.round(totalKes)}&currency=KES&wallet=${encodeURIComponent(profile.wallet)}`,
+          message: 'Opening Payflee handoff. Configure the Payflee payment link on Vercel for direct checkout.',
+        };
+      }
 
       if (!response.ok && !data.message) {
         setError(data.error ?? 'Unable to start checkout');
@@ -77,7 +86,7 @@ export default function BuyScreen() {
           <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
             <ArrowLeft size={22} color={theme.text.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: theme.text.primary }]}>Buy RXP</Text>
+          <Text style={[styles.headerTitle, { color: theme.text.primary }]}>Buy XRP</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -87,7 +96,7 @@ export default function BuyScreen() {
               <WalletCards size={26} color={theme.accent[400]} />
             </View>
             <Text style={[styles.rateLabel, { color: theme.text.secondary }]}>Fixed Wallex Rate</Text>
-            <Text style={[styles.rateValue, { color: theme.text.primary }]}>KSh {WALLEX_BRAND.rxpRateKes} per RXP</Text>
+            <Text style={[styles.rateValue, { color: theme.text.primary }]}>KSh {WALLEX_BRAND.xrpRateKes} per XRP</Text>
             <Text style={[styles.rateNote, { color: theme.text.secondary }]}>Card checkout is routed through the server so private payment keys stay off the public app.</Text>
           </Animated.View>
 
@@ -97,23 +106,23 @@ export default function BuyScreen() {
               {[10, 25, 50, 100].map((quick) => (
                 <TouchableOpacity
                   key={quick}
-                  style={[styles.quickChip, { backgroundColor: Number(rxpAmount) === quick ? theme.accent[500] + '22' : theme.bg.card, borderColor: Number(rxpAmount) === quick ? theme.accent[500] + '66' : theme.bg.border }]}
-                  onPress={() => setRxpAmount(String(quick))}
+                  style={[styles.quickChip, { backgroundColor: Number(xrpAmount) === quick ? theme.accent[500] + '22' : theme.bg.card, borderColor: Number(xrpAmount) === quick ? theme.accent[500] + '66' : theme.bg.border }]}
+                  onPress={() => setXrpAmount(String(quick))}
                 >
-                  <Text style={[styles.quickChipText, { color: Number(rxpAmount) === quick ? theme.accent[400] : theme.text.secondary }]}>{quick} RXP</Text>
+                  <Text style={[styles.quickChipText, { color: Number(xrpAmount) === quick ? theme.accent[400] : theme.text.secondary }]}>{quick} XRP</Text>
                 </TouchableOpacity>
               ))}
             </View>
             <View style={[styles.inputWrap, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
               <TextInput
                 style={[styles.amountInput, { color: theme.text.primary }]}
-                value={rxpAmount}
-                onChangeText={setRxpAmount}
+                value={xrpAmount}
+                onChangeText={setXrpAmount}
                 keyboardType="decimal-pad"
                 placeholder="0"
                 placeholderTextColor={theme.text.muted}
               />
-              <Text style={[styles.inputSuffix, { color: theme.text.secondary }]}>RXP</Text>
+              <Text style={[styles.inputSuffix, { color: theme.text.secondary }]}>XRP</Text>
             </View>
           </Animated.View>
 

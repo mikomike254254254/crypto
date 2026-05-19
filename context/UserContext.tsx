@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { ImageSourcePropType } from 'react-native';
 import { CARTOON_AVATARS } from '@/constants/brand';
-import { createRxpWalletAddress } from '@/lib/wallet';
+import { createRippleWalletAddress } from '@/lib/wallet';
 
 export interface UserProfile {
   name: string;
@@ -30,6 +30,7 @@ export interface UserProfile {
   };
   security: {
     pinEnabled: boolean;
+    pinSetAt: Date | null;
     twoFactorEnabled: boolean;
     biometricEnabled: boolean;
   };
@@ -39,7 +40,7 @@ export interface UserProfile {
 const DEFAULT_PROFILE: UserProfile = {
   name: '',
   email: '',
-  wallet: 'rxp_demo_wallet',
+  wallet: 'rWallexDemoXRP9s7Q8m5P2t4K6n3B1a',
   avatar: null,
   avatarUri: CARTOON_AVATARS[0].uri,
   authProvider: 'local',
@@ -63,6 +64,7 @@ const DEFAULT_PROFILE: UserProfile = {
   },
   security: {
     pinEnabled: false,
+    pinSetAt: null,
     twoFactorEnabled: false,
     biometricEnabled: false,
   },
@@ -101,7 +103,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     password?: string,
     provider: UserProfile['authProvider'] = 'email',
   ) => {
-    const wallet = createRxpWalletAddress(email, name);
+    const wallet = createRippleWalletAddress(email, name);
 
     setProfileState((prev) => ({
       ...prev,

@@ -1,6 +1,6 @@
 # Wallex Online
 
-Wallex is an Expo crypto wallet app for `wallex.online`. It includes the landing page, RXP wallet, card-buy flow, KYC submission flow, admin command center, Supabase schema, and an Android WebView app shell.
+Wallex is an Expo crypto wallet app for `wallex.online`. It includes the landing page, XRP wallet, card-buy flow, KYC submission flow, operations dashboard, Supabase schema, and an Android WebView app shell.
 
 ## Current Code Structure
 
@@ -8,26 +8,27 @@ Wallex is an Expo crypto wallet app for `wallex.online`. It includes the landing
 app/
   (tabs)/                 Main wallet tabs: home, assets, activity, profile, notifications
   onboarding.tsx          Landing page, signup, Google button, password setup, avatar setup
-  send.tsx                Internal RXP wallet transfers
-  receive.tsx             RXP receive address and QR-style view
-  buy.tsx                 RXP card checkout flow
+  send.tsx                XRP wallet transfers
+  receive.tsx             XRP receive address and QR-style view
+  buy.tsx                 XRP card checkout flow
   kyc.tsx                 KYC form and Supabase submission metadata
-  admin.tsx               Admin dashboard for rewards, KYC, bans, notifications, transactions
+  admin.tsx               Operations dashboard for balances, KYC, bans, notifications, transactions
   webview-app.tsx         Android/iOS WebView app shell with 5-second loaded popup
 api/
-  admin.js                Server-side admin actions using Supabase service role
+  admin-login.js          Admin login endpoint; returns a server token only after password login
+  admin.js                Server-side operations actions using Supabase service role
   payflee-checkout.js     Server-side card checkout handoff
   crypto-prices.js        FreeCryptoAPI/fallback market data
 constants/
-  brand.ts                Wallex logo, email, domain, RXP rate, bonus, images
+  brand.ts                Wallex logo, email, domain, XRP rate, bonus, images
   crypto.ts               Initial wallet assets and activity
 context/
-  UserContext.tsx         Profile, generated RXP wallet, KYC status, security settings
+  UserContext.tsx         Profile, generated Ripple-style wallet, KYC status, security settings
 lib/
   auth.ts                 Supabase email/password and Google signup helpers
   kyc.ts                  Supabase KYC submission helper
-  supabase.ts             Supabase client and optional RXP sync
-  wallet.ts               `rxp_...` wallet address generator/validator
+  supabase.ts             Supabase client and optional wallet sync
+  wallet.ts               Ripple-style wallet address generator/validator
 supabase/
   schema.sql              Tables, triggers, RLS policies, signup bonus, KYC queue
 ```
@@ -51,6 +52,8 @@ http://localhost:3000
 http://127.0.0.1:3000
 https://wallex.online
 https://www.wallex.online
+https://crypto-main-bice.vercel.app
+https://crypto-main-2xhn1k5x7-edipay.vercel.app
 https://wallex-static-a8c933e333b342e083ff8.vercel.app
 https://crypto-main-psi.vercel.app
 ```
@@ -96,6 +99,8 @@ http://localhost:3000/**
 http://127.0.0.1:3000/**
 https://wallex.online/**
 https://www.wallex.online/**
+https://crypto-main-bice.vercel.app/**
+https://crypto-main-2xhn1k5x7-edipay.vercel.app/**
 https://wallex-static-a8c933e333b342e083ff8.vercel.app/**
 https://crypto-main-psi.vercel.app/**
 https://*-mikomike280s-projects.vercel.app/**
@@ -110,8 +115,30 @@ Then run `supabase/schema.sql` in the Supabase SQL editor. That creates:
 - `banned_wallets`
 - `notifications`
 - `mpesa_withdraws`
-- automatic `$15` signup bonus as `10.79 RXP`
+- automatic `$15` signup bonus as `10.79 XRP`
 - RLS policies for user-owned data
+
+## Admin, Email, and Payments
+
+Add these server-only environment variables in Vercel. Do not put them in Expo public variables:
+
+```text
+ADMIN_EMAIL=admin@wallex.online
+ADMIN_PASSWORD=your-private-admin-password
+ADMIN_API_TOKEN=your-long-random-server-token
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+RESEND_API_KEY=optional-for-kyc-emails
+EMAIL_FROM=Wallex <support@wallex.online>
+EMAIL_WEBHOOK_URL=optional-email-provider-webhook
+PAYFLEE_SECRET_KEY=your-payflee-secret-key
+PAYFLEE_PUBLIC_KEY=your-payflee-public-key
+PAYFLEE_PAYMENT_LINK_URL=your-hosted-payflee-link
+PAYFLEE_API_URL=optional-direct-payflee-api-url
+```
+
+The public app never shows an admin token. Admin users sign in at `/admin`, and server actions use the token behind that login. KYC approve/reject writes a notification and can send email when `RESEND_API_KEY` or `EMAIL_WEBHOOK_URL` is configured.
+
+For card payment, `PAYFLEE_PAYMENT_LINK_URL` is the easiest live setup. If it is empty, the app still opens a Payflee handoff page so the button works during local/static testing.
 
 ## Local Development
 

@@ -28,7 +28,7 @@ export async function recordWalletTransfer(params: {
     from_wallet: params.fromWallet,
     to_wallet: params.toWallet,
     amount: params.amount,
-    token: params.token ?? 'RXP',
+    token: params.token ?? 'XRP',
     type: 'transfer',
     status: 'completed',
     note: params.note ?? null,

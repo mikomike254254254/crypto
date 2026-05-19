@@ -22,11 +22,11 @@ export default function Root({ children }: { children: ReactNode }) {
         <title>Wallex.online | Secure Crypto Wallet for Africa, Asia, Europe and the USA</title>
         <meta
           name="description"
-          content="Wallex.online is a secure crypto wallet experience for RXP transfers, crypto portfolio tracking, KYC review, rewards, and card purchase workflows across Africa, Asia, Europe, and the USA."
+          content="Wallex.online is a secure mobile crypto wallet experience for XRP transfers, crypto portfolio tracking, KYC review, wallet security, and card purchase workflows across Africa, Asia, Europe, and the USA."
         />
-        <meta name="keywords" content="Wallex, wallex.online, crypto wallet, RXP, XRP, Africa crypto, Asia crypto, Europe crypto, USA crypto, KYC crypto wallet" />
+        <meta name="keywords" content="Wallex, wallex.online, crypto wallet, XRP, Ripple wallet, Africa crypto, Asia crypto, Europe crypto, USA crypto, KYC crypto wallet" />
         <meta property="og:title" content="Wallex.online Secure Crypto Wallet" />
-        <meta property="og:description" content="Send, receive, buy, and manage RXP with a clean Wallex wallet interface." />
+        <meta property="og:description" content="Send, receive, buy, and manage XRP with a clean Wallex wallet interface." />
         <meta property="og:image" content={WALLEX_BRAND.logoUrl} />
         <meta property="og:url" content={WALLEX_BRAND.domain} />
         <meta name="twitter:card" content="summary_large_image" />

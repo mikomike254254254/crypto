@@ -28,11 +28,15 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { theme, isDark, toggleTheme, darkThemeKey, setDarkTheme, availableDarkThemes } = useTheme();
+  const { theme, isDark, toggleTheme } = useTheme();
   const { profile, setProfile, setSecurity } = useUser();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [customAvatarUrl, setCustomAvatarUrl] = useState('');
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pin, setPin] = useState('');
+  const [pinConfirm, setPinConfirm] = useState('');
+  const [pinError, setPinError] = useState('');
 
   const kycStatus = profile.kycStatus;
   const kycConfig = {
@@ -53,6 +57,22 @@ export default function ProfileScreen() {
       return;
     }
     Linking.openURL(`https://mail.google.com/mail/?view=cm&fs=1&to=${WALLEX_BRAND.supportEmail}`);
+  };
+
+  const saveWalletPin = () => {
+    if (!/^\d{4,6}$/.test(pin)) {
+      setPinError('Use a 4 to 6 digit PIN.');
+      return;
+    }
+    if (pin !== pinConfirm) {
+      setPinError('PIN confirmation does not match.');
+      return;
+    }
+    setSecurity({ pinEnabled: true, pinSetAt: new Date() });
+    setPin('');
+    setPinConfirm('');
+    setPinError('');
+    setPinModalVisible(false);
   };
 
   return (
@@ -178,33 +198,10 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Dark theme picker */}
-        {isDark && (
-          <View style={styles.themePickerSection}>
-            <Text style={[styles.pickerLabel, { color: theme.text.secondary }]}>Choose Dark Theme</Text>
-            <View style={styles.themeGrid}>
-              {availableDarkThemes.map((dt) => {
-                const isActive = darkThemeKey === dt.key;
-                return (
-                  <TouchableOpacity key={dt.key} style={[styles.themeCard, { borderColor: isActive ? theme.accent[400] : theme.bg.border }]} onPress={() => setDarkTheme(dt.key)} activeOpacity={0.8}>
-                    <View style={styles.themePreview}>
-                      <View style={[styles.swatchMain, { backgroundColor: dt.bg.primary }]} />
-                      <View style={[styles.swatchCard, { backgroundColor: dt.bg.card }]} />
-                      <View style={[styles.swatchAccent, { backgroundColor: dt.accent[500] }]} />
-                    </View>
-                    <Text style={[styles.themeCardName, { color: theme.text.primary }]}>{dt.name}</Text>
-                    {isActive && <View style={[styles.activeCheck, { backgroundColor: theme.accent[500] }]}><Check size={10} color="#fff" strokeWidth={3} /></View>}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
         {/* ── Security ── */}
         <Text style={[styles.sectionLabel, { color: theme.text.muted }]}>Security</Text>
         <View style={[styles.menuGroup, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
-          <MenuRow icon={<Lock size={18} color={theme.primary[400]} />} iconBg={theme.primary[500] + '22'} label={profile.security.pinEnabled ? 'Wallet PIN Enabled' : 'Set Wallet PIN'} theme={theme} onPress={() => setSecurity({ pinEnabled: !profile.security.pinEnabled })} />
+          <MenuRow icon={<Lock size={18} color={theme.primary[400]} />} iconBg={theme.primary[500] + '22'} label={profile.security.pinEnabled ? 'Change Wallet PIN' : 'Set Wallet PIN'} theme={theme} onPress={() => setPinModalVisible(true)} />
           <View style={[styles.divider, { backgroundColor: theme.bg.border }]} />
           <View style={styles.menuRow}>
             <View style={[styles.menuIconWrap, { backgroundColor: theme.success[500] + '22' }]}><Shield size={18} color={theme.success[400]} /></View>
@@ -254,6 +251,42 @@ export default function ProfileScreen() {
       </ScrollView>
 
       {/* ── Avatar Picker Modal ── */}
+      <Modal visible={pinModalVisible} transparent animationType="fade" onRequestClose={() => setPinModalVisible(false)}>
+        <View style={styles.pinOverlay}>
+          <View style={[styles.pinCard, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
+            <Text style={[styles.pinTitle, { color: theme.text.primary }]}>Set Wallet PIN</Text>
+            <Text style={[styles.pinSub, { color: theme.text.secondary }]}>Use this PIN for future wallet access and send confirmations.</Text>
+            <TextInput
+              style={[styles.pinInput, { color: theme.text.primary, borderColor: theme.bg.border, backgroundColor: theme.bg.primary }]}
+              placeholder="4-6 digit PIN"
+              placeholderTextColor={theme.text.muted}
+              value={pin}
+              onChangeText={setPin}
+              keyboardType="number-pad"
+              secureTextEntry
+              maxLength={6}
+            />
+            <TextInput
+              style={[styles.pinInput, { color: theme.text.primary, borderColor: theme.bg.border, backgroundColor: theme.bg.primary }]}
+              placeholder="Confirm PIN"
+              placeholderTextColor={theme.text.muted}
+              value={pinConfirm}
+              onChangeText={setPinConfirm}
+              keyboardType="number-pad"
+              secureTextEntry
+              maxLength={6}
+            />
+            {pinError ? <Text style={[styles.pinError, { color: theme.error[400] }]}>{pinError}</Text> : null}
+            <TouchableOpacity style={[styles.pinSave, { backgroundColor: theme.accent[500] }]} onPress={saveWalletPin}>
+              <Text style={styles.pinSaveText}>Save PIN</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.pinCancel} onPress={() => setPinModalVisible(false)}>
+              <Text style={[styles.pinCancelText, { color: theme.text.secondary }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={avatarModalVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAvatarModalVisible(false)}>
         <SafeAreaView style={[styles.modalSafe, { backgroundColor: theme.bg.primary }]}>
           <View style={styles.modalHeader}>
@@ -400,6 +433,16 @@ const styles = StyleSheet.create({
   swatchAccent: { width: 6, height: 36 },
   themeCardName: { fontSize: 12, fontFamily: 'Inter-SemiBold', letterSpacing: 0.3 },
   activeCheck: { position: 'absolute', top: 6, right: 6, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  pinOverlay: { flex: 1, backgroundColor: '#00000099', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  pinCard: { width: '100%', maxWidth: 390, borderWidth: 1, borderRadius: 22, padding: 20, gap: 10 },
+  pinTitle: { fontSize: 22, fontFamily: 'Inter-Bold' },
+  pinSub: { fontSize: 13, fontFamily: 'Inter-Regular', lineHeight: 19, marginBottom: 4 },
+  pinInput: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 13, fontSize: 16, fontFamily: 'Inter-SemiBold' },
+  pinError: { fontSize: 12, fontFamily: 'Inter-SemiBold' },
+  pinSave: { borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  pinSaveText: { color: '#fff', fontSize: 14, fontFamily: 'Inter-SemiBold' },
+  pinCancel: { alignItems: 'center', paddingVertical: 5 },
+  pinCancelText: { fontSize: 13, fontFamily: 'Inter-SemiBold' },
   // Logout
   logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderRadius: 14, paddingVertical: 14, marginTop: 24, borderWidth: 1 },
   logoutText: { fontSize: 15, fontFamily: 'Inter-SemiBold' },

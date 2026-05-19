@@ -22,13 +22,14 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withTiming,
+  Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowRight, Check, Chrome, KeyRound, Mail, Shield, WalletCards } from 'lucide-react-native';
+import { ArrowRight, BadgeCheck, Bell, Check, Chrome, FileText, KeyRound, Lock, Mail, Shield, WalletCards } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
-import { CARTOON_AVATARS, POPULAR_MARKETS, WALLEX_BRAND } from '@/constants/brand';
-import { createRxpWalletAddress, shortWallet } from '@/lib/wallet';
+import { CARTOON_AVATARS, WALLEX_BRAND } from '@/constants/brand';
+import { createRippleWalletAddress, shortWallet } from '@/lib/wallet';
 import { signInWithGoogle, signUpWithEmailPassword } from '@/lib/auth';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -49,10 +50,12 @@ export default function OnboardingScreen() {
   const [authBusy, setAuthBusy] = useState(false);
   const marquee = useSharedValue(0);
   const footerOpacity = useSharedValue(0.82);
+  const logoSpin = useSharedValue(0);
 
   useEffect(() => {
     marquee.value = withRepeat(withTiming(-SCREEN_WIDTH, { duration: 28000 }), -1, false);
     footerOpacity.value = withRepeat(withTiming(1, { duration: 1600 }), -1, true);
+    logoSpin.value = withRepeat(withTiming(360, { duration: 4000, easing: Easing.linear }), -1, false);
   }, []);
 
   const marqueeStyle = useAnimatedStyle(() => ({
@@ -61,6 +64,10 @@ export default function OnboardingScreen() {
 
   const footerStyle = useAnimatedStyle(() => ({
     opacity: footerOpacity.value,
+  }));
+
+  const logoSpinStyle = useAnimatedStyle(() => ({
+    transform: [{ rotateY: `${logoSpin.value}deg` }],
   }));
 
   const canProceed = step === 0
@@ -75,11 +82,29 @@ export default function OnboardingScreen() {
     ? selectedAvatar !== null
     : true;
 
-  const previewWallet = createRxpWalletAddress(email || 'member@wallex.online', name || 'Wallex Member');
+  const previewWallet = createRippleWalletAddress(email || 'member@wallex.online', name || 'Wallex Member');
+
+  const handleAuthSubmit = () => {
+    setAuthNotice('');
+
+    if (authMode === 'signup') {
+      if (!name.trim() || !email.includes('@') || password.length < 8 || password !== confirmPassword) {
+        setAuthNotice('Enter your name, email, and matching password with at least 8 characters.');
+        return;
+      }
+
+      setAuthMode(null);
+      setStep(2);
+      return;
+    }
+
+    setAuthMode(null);
+    setStep(1);
+  };
 
   const handleNext = async () => {
     if (step === 2 && selectedAvatar) {
-      const wallet = createRxpWalletAddress(email.trim(), name.trim());
+      const wallet = createRippleWalletAddress(email.trim(), name.trim());
       await signUpWithEmailPassword({
         name: name.trim(),
         email: email.trim(),
@@ -113,7 +138,7 @@ export default function OnboardingScreen() {
     ? [theme.bg.primary, '#111827'] as [string, string]
     : ['#f8fafc', '#e0f2fe'] as [string, string];
 
-  const tickerItems = ['BTC $68,420', 'ETH $2,650', 'XRP $2.45', 'SOL $148.90', 'BNB $612', 'ADA $0.42', 'RXP KSh 180'];
+  const tickerItems = ['XRP wallet protection', 'KYC review ready', 'PIN secured access', 'Daily value refresh', 'Encrypted sessions', 'Support online'];
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg.primary }]}>
@@ -124,13 +149,13 @@ export default function OnboardingScreen() {
               <Animated.View entering={FadeInDown.duration(500)} style={styles.landing}>
                 <View style={[styles.topNav, { backgroundColor: '#ffffffdd', borderColor: '#e2e8f0' }]}>
                   <View style={styles.brandRow}>
-                    <Image source={{ uri: WALLEX_BRAND.logoUrl }} style={styles.brandLogo} />
+                    <Animated.Image source={{ uri: WALLEX_BRAND.logoUrl }} style={[styles.brandLogo, logoSpinStyle]} />
                     <Text style={styles.brandName}>wallex</Text>
                   </View>
 
                   {SCREEN_WIDTH > 760 && (
                     <View style={styles.navLinks}>
-                      {['Markets', 'Trade', 'Earn', 'Security'].map((item) => (
+                      {['Security', 'Wallet', 'KYC', 'Support'].map((item) => (
                         <Text key={item} style={styles.navLink}>{item}</Text>
                       ))}
                     </View>
@@ -154,7 +179,7 @@ export default function OnboardingScreen() {
                         <Text style={styles.titleAccent}>Simply secure.</Text>
                       </Text>
                       <Text style={styles.heroBody}>
-                        Trade, hold, and earn with confidence. Institutional-grade security with a beautiful interface.
+                        A clean mobile-first XRP wallet for protected balances, identity review, secure transfers, and quick support.
                       </Text>
 
                       <TouchableOpacity style={styles.primaryBtn} onPress={() => setAuthMode('signup')} activeOpacity={0.86}>
@@ -165,11 +190,11 @@ export default function OnboardingScreen() {
                       <View style={styles.securityBadges}>
                         <View style={styles.securityBadge}>
                           <Shield size={15} color="#10b981" />
-                          <Text style={styles.securityBadgeText}>Bank-grade security</Text>
+                          <Text style={styles.securityBadgeText}>Secure wallet access</Text>
                         </View>
                         <View style={styles.securityBadge}>
                           <Shield size={15} color="#10b981" />
-                          <Text style={styles.securityBadgeText}>2FA + MPC</Text>
+                          <Text style={styles.securityBadgeText}>PIN + KYC ready</Text>
                         </View>
                       </View>
                     </View>
@@ -177,9 +202,9 @@ export default function OnboardingScreen() {
                     <View style={styles.phoneWrap}>
                       <Image source={{ uri: WALLEX_BRAND.heroImageUrl }} style={styles.phoneImage} />
                       <View style={styles.priceCard}>
-                        <Text style={styles.priceLabel}>XRP PRICE</Text>
-                        <Text style={styles.priceValue}>$2.45</Text>
-                        <Text style={styles.priceChange}>+2.8%</Text>
+                        <Text style={styles.priceLabel}>XRP RATE</Text>
+                        <Text style={styles.priceValue}>KSh {WALLEX_BRAND.xrpRateKes}</Text>
+                        <Text style={styles.priceChange}>Updated daily</Text>
                       </View>
                     </View>
                   </View>
@@ -195,9 +220,9 @@ export default function OnboardingScreen() {
 
                 <View style={styles.featuresSection}>
                   {[
-                    ['Lightning Fast', 'Instant Wallex RXP transfers and trading workflows.'],
-                    ['Institutional Security', 'KYC-ready controls, admin review, and wallet monitoring.'],
-                    ['Earn Rewards', 'Admin can reward users with internal RXP balances.'],
+                    ['Fast XRP Transfers', 'Move XRP between Wallex wallets with a simple address flow.'],
+                    ['Identity Protection', 'KYC submission, review status, and secure profile controls.'],
+                    ['Private By Design', 'Support, notifications, and security settings stay inside the wallet.'],
                   ].map(([title, body]) => (
                     <View key={title} style={styles.featureCard}>
                       <View style={styles.featureIcon}>
@@ -209,8 +234,27 @@ export default function OnboardingScreen() {
                   ))}
                 </View>
 
+                <View style={styles.securitySection}>
+                  <Text style={styles.securityTitle}>Built Around Security</Text>
+                  <Text style={styles.securityIntro}>Wallex keeps the landing page calm because the real product is the wallet: secure access, verified accounts, and clear wallet movement.</Text>
+                  <View style={styles.securityGrid}>
+                    {[
+                      ['PIN access', 'Set a wallet PIN from profile settings.', <Lock size={22} color="#0f766e" />],
+                      ['KYC status', 'Submit ID and track review progress.', <BadgeCheck size={22} color="#0369a1" />],
+                      ['Document care', 'ID references are sent to the Supabase review queue.', <FileText size={22} color="#7c3aed" />],
+                      ['Notifications', 'Wallet updates and support messages arrive in-app.', <Bell size={22} color="#b45309" />],
+                    ].map(([title, body, icon]) => (
+                      <View key={title as string} style={styles.securityTile}>
+                        <View style={styles.securityTileIcon}>{icon}</View>
+                        <Text style={styles.securityTileTitle}>{title as string}</Text>
+                        <Text style={styles.securityTileBody}>{body as string}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
                 <View style={styles.finalCta}>
-                  <Text style={styles.finalTitle}>Start trading securely today</Text>
+                  <Text style={styles.finalTitle}>Start securely today</Text>
                   <TouchableOpacity style={styles.finalButton} onPress={() => setAuthMode('signup')}>
                     <Text style={styles.finalButtonText}>Open Wallet - It's Free</Text>
                   </TouchableOpacity>
@@ -236,7 +280,7 @@ export default function OnboardingScreen() {
             {step === 1 && (
               <Animated.View entering={FadeInDown.duration(400)} style={styles.formContainer}>
                 <Text style={[styles.stepTitle, { color: theme.text.primary }]}>Create your Wallex profile</Text>
-                <Text style={[styles.stepSub, { color: theme.text.secondary }]}>Set your login, password, and internal RXP wallet identity.</Text>
+                  <Text style={[styles.stepSub, { color: theme.text.secondary }]}>Set your name, email, password, and XRP wallet identity.</Text>
 
                 <View style={styles.fieldGroup}>
                   <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Full Name</Text>
@@ -311,11 +355,11 @@ export default function OnboardingScreen() {
                 <View style={[styles.walletPreview, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
                   <View style={styles.walletPreviewHeader}>
                     <WalletCards size={18} color={theme.accent[400]} />
-                    <Text style={[styles.walletPreviewTitle, { color: theme.text.primary }]}>Your RXP wallet address</Text>
+                    <Text style={[styles.walletPreviewTitle, { color: theme.text.primary }]}>Your XRP wallet address</Text>
                   </View>
                   <Text style={[styles.walletPreviewAddress, { color: theme.text.primary }]}>{shortWallet(previewWallet, 18, 7)}</Text>
                   <Text style={[styles.walletPreviewBody, { color: theme.text.secondary }]}>
-                    New accounts start with zero external coins and receive a ${WALLEX_BRAND.signupBonusUsd} welcome bonus in RXP activity.
+                    New accounts start with zero external coins and receive a ${WALLEX_BRAND.signupBonusUsd} welcome bonus in XRP activity.
                   </Text>
                 </View>
 
@@ -375,7 +419,7 @@ export default function OnboardingScreen() {
                 </View>
                 <Text style={[styles.doneTitle, { color: theme.text.primary }]}>You are all set, {name.split(' ')[0]}.</Text>
                 <Text style={[styles.doneSub, { color: theme.text.secondary }]}>
-                  Your Wallex account is ready for RXP transfers, rewards, and KYC.
+                  Your Wallex account is ready for XRP transfers, security settings, and KYC.
                 </Text>
               </Animated.View>
             )}
@@ -426,6 +470,16 @@ export default function OnboardingScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.authModal}>
             <Text style={styles.authTitle}>{authMode === 'login' ? 'Log in' : 'Create account'}</Text>
+            {authMode === 'signup' && (
+              <TextInput
+                style={styles.authInput}
+                placeholder="Full name"
+                placeholderTextColor="#94a3b8"
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+              />
+            )}
             <TextInput
               style={styles.authInput}
               placeholder={authMode === 'login' ? 'Email or wallet' : 'Email address'}
@@ -441,16 +495,39 @@ export default function OnboardingScreen() {
                 placeholder="Password"
                 placeholderTextColor="#94a3b8"
                 secureTextEntry
+                value={password}
+                onChangeText={setPassword}
               />
+            )}
+            {authMode === 'signup' && (
+              <>
+                <TextInput
+                  style={styles.authInput}
+                  placeholder="Create password"
+                  placeholderTextColor="#94a3b8"
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <TextInput
+                  style={styles.authInput}
+                  placeholder="Confirm password"
+                  placeholderTextColor="#94a3b8"
+                  secureTextEntry
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+                <View style={styles.authPreview}>
+                  <WalletCards size={15} color="#0284c7" />
+                  <Text style={styles.authPreviewText}>{shortWallet(previewWallet)} XRP wallet will be reserved.</Text>
+                </View>
+              </>
             )}
             <TouchableOpacity
               style={styles.authSubmit}
-              onPress={() => {
-                setAuthMode(null);
-                setStep(1);
-              }}
+              onPress={handleAuthSubmit}
             >
-              <Text style={styles.authSubmitText}>{authMode === 'login' ? 'Log in' : 'Open Wallet'}</Text>
+              <Text style={styles.authSubmitText}>{authMode === 'login' ? 'Log in' : 'Continue Setup'}</Text>
             </TouchableOpacity>
             {authMode === 'signup' && (
               <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup} disabled={authBusy}>
@@ -523,9 +600,6 @@ const styles = StyleSheet.create({
   priceChange: { fontSize: 12, fontFamily: 'Inter-SemiBold', color: '#10b981', textAlign: 'center', marginTop: 2 },
   heroCard: { borderRadius: 28, borderWidth: 1, padding: 8, position: 'relative', overflow: 'hidden' },
   heroImage: { width: '100%', height: Math.min(360, SCREEN_WIDTH * 0.58), borderRadius: 22 },
-  rxpFloat: { position: 'absolute', right: 18, bottom: 18, backgroundColor: '#ffffffee', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 12 },
-  rxpFloatLabel: { fontSize: 10, fontFamily: 'Inter-Bold', color: '#64748b', letterSpacing: 0.7 },
-  rxpFloatValue: { fontSize: 20, fontFamily: 'Inter-Bold', color: '#0f172a', marginTop: 2 },
   tickerWrap: { overflow: 'hidden', backgroundColor: '#f8fafc', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#e2e8f0', paddingVertical: 14 },
   tickerTrack: { flexDirection: 'row', gap: 44, width: SCREEN_WIDTH * 4 },
   tickerText: { fontSize: 13, fontFamily: 'Inter-SemiBold', color: '#64748b' },
@@ -534,6 +608,14 @@ const styles = StyleSheet.create({
   featureIcon: { width: 46, height: 46, borderRadius: 16, backgroundColor: '#e0f2fe', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   featureTitle: { fontSize: 22, fontFamily: 'Inter-Bold', color: '#0f172a' },
   featureBody: { fontSize: 14, fontFamily: 'Inter-Regular', color: '#64748b', lineHeight: 20 },
+  securitySection: { paddingHorizontal: 22, paddingVertical: 56, backgroundColor: '#f8fafc', gap: 14 },
+  securityTitle: { fontSize: 34, fontFamily: 'Inter-Bold', color: '#0f172a', letterSpacing: 0, lineHeight: 40 },
+  securityIntro: { fontSize: 15, fontFamily: 'Inter-Regular', color: '#475569', lineHeight: 23, maxWidth: 680 },
+  securityGrid: { gap: 12, marginTop: 12 },
+  securityTile: { borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#ffffff', borderRadius: 22, padding: 18, gap: 8 },
+  securityTileIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
+  securityTileTitle: { fontSize: 16, fontFamily: 'Inter-Bold', color: '#0f172a' },
+  securityTileBody: { fontSize: 13, fontFamily: 'Inter-Regular', color: '#64748b', lineHeight: 19 },
   finalCta: { backgroundColor: '#0f172a', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 54, gap: 18 },
   finalTitle: { fontSize: 38, fontFamily: 'Inter-Bold', color: '#ffffff', textAlign: 'center', lineHeight: 44 },
   finalButton: { backgroundColor: '#ffffff', borderRadius: 30, paddingHorizontal: 32, paddingVertical: 17 },
@@ -589,6 +671,8 @@ const styles = StyleSheet.create({
   authModal: { width: '100%', maxWidth: 420, backgroundColor: '#ffffff', borderRadius: 28, padding: 24, borderWidth: 1, borderColor: '#e2e8f0', gap: 14 },
   authTitle: { fontSize: 28, fontFamily: 'Inter-Bold', color: '#0f172a', marginBottom: 6 },
   authInput: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 15, fontSize: 15, fontFamily: 'Inter-Regular', color: '#0f172a' },
+  authPreview: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', borderRadius: 16, padding: 11 },
+  authPreviewText: { flex: 1, color: '#0369a1', fontSize: 12, fontFamily: 'Inter-SemiBold' },
   authSubmit: { backgroundColor: '#0f172a', borderRadius: 18, alignItems: 'center', paddingVertical: 15, marginTop: 4 },
   authSubmitText: { color: '#ffffff', fontSize: 15, fontFamily: 'Inter-SemiBold' },
   googleButton: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 18, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, flexDirection: 'row', gap: 8, backgroundColor: '#ffffff' },

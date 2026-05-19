@@ -34,7 +34,7 @@ export default function WallexWebViewAppScreen() {
   const scheduleLoadedMessage = () => {
     if (messageTimer.current) clearTimeout(messageTimer.current);
     messageTimer.current = setTimeout(() => {
-      Alert.alert('Wallex is ready', 'Your Wallex wallet has loaded. You can send, receive, buy, and manage RXP securely.');
+      Alert.alert('Wallex is ready', 'Your Wallex wallet has loaded. You can send, receive, buy, and manage XRP securely.');
     }, 5000);
   };
 

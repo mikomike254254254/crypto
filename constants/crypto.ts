@@ -1,4 +1,4 @@
-import { WALLEX_BRAND } from '@/constants/brand';
+import { RIPPLE_LOGO_URL, WALLEX_BRAND } from '@/constants/brand';
 
 export interface CryptoAsset {
   id: string;
@@ -13,24 +13,14 @@ export interface CryptoAsset {
 
 export const CRYPTO_ASSETS: CryptoAsset[] = [
   {
-    id: 'rxp',
-    symbol: 'RXP',
-    name: 'Wallex Reward Points',
-    balance: WALLEX_BRAND.signupBonusRxp,
-    price: WALLEX_BRAND.rxpUsdPrice,
-    change24h: 0.8,
-    icon: WALLEX_BRAND.logoUrl,
-    address: 'rxp_welcome_wallet',
-  },
-  {
     id: 'xrp',
     symbol: 'XRP',
-    name: 'XRP Ledger',
-    balance: 0,
-    price: 0.6138,
-    change24h: 3.24,
-    icon: 'https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png',
-    address: 'rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh',
+    name: 'Wallex XRP',
+    balance: WALLEX_BRAND.signupBonusXrp,
+    price: WALLEX_BRAND.xrpUsdPrice,
+    change24h: 0.8,
+    icon: RIPPLE_LOGO_URL,
+    address: 'rWallexXRPn4F9mV8sK2pQ6tD3zA7bYc',
   },
   {
     id: 'btc',
@@ -150,8 +140,8 @@ export const MOCK_TRANSACTIONS: Transaction[] = [
   {
     id: '1',
     type: 'receive',
-    symbol: 'RXP',
-    amount: WALLEX_BRAND.signupBonusRxp,
+    symbol: 'XRP',
+    amount: WALLEX_BRAND.signupBonusXrp,
     usdValue: WALLEX_BRAND.signupBonusUsd,
     address: 'system@wallex',
     timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),

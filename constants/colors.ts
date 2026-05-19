@@ -521,7 +521,6 @@ export const DarkTheme = VantaBlackTheme;
 export const LightTheme = SettledLightTheme;
 
 export const CryptoColors: Record<string, { primary: string; gradient: [string, string] }> = {
-  RXP: { primary: '#111827', gradient: ['#111827', '#00aae4'] },
   XRP: { primary: '#00aae4', gradient: ['#00aae4', '#0066cc'] },
   BTC: { primary: '#f7931a', gradient: ['#f7931a', '#c96800'] },
   ETH: { primary: '#627eea', gradient: ['#627eea', '#3358cc'] },

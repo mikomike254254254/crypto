@@ -1,6 +1,7 @@
-export const RXP_USD_PRICE = 1.39;
+export const XRP_USD_PRICE = 1.39;
 export const SIGNUP_BONUS_USD = 15;
-export const SIGNUP_BONUS_RXP = Number((SIGNUP_BONUS_USD / RXP_USD_PRICE).toFixed(2));
+export const SIGNUP_BONUS_XRP = Number((SIGNUP_BONUS_USD / XRP_USD_PRICE).toFixed(2));
+export const USD_TO_KES = 129.19;
 
 export const WALLEX_BRAND = {
   name: 'Wallex',
@@ -11,11 +12,15 @@ export const WALLEX_BRAND = {
   logoUrl: 'https://i.postimg.cc/C5xPhJz5/wallex-logo.jpg',
   heroImageUrl: 'https://i.postimg.cc/PJvDQ87K/dc2a020fb68e8bd16b808612feaf0954.jpg',
   portfolioBackgroundUrl: 'https://i.postimg.cc/g0Ng0J7b/b41640c9e405eb79941055db517017a0.jpg',
-  rxpRateKes: 180,
-  rxpUsdPrice: RXP_USD_PRICE,
+  primarySymbol: 'XRP',
+  xrpRateKes: 180,
+  xrpUsdPrice: XRP_USD_PRICE,
+  usdToKes: USD_TO_KES,
   signupBonusUsd: SIGNUP_BONUS_USD,
-  signupBonusRxp: SIGNUP_BONUS_RXP,
+  signupBonusXrp: SIGNUP_BONUS_XRP,
 };
+
+export const RIPPLE_LOGO_URL = 'https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png';
 
 export const CARTOON_AVATARS = [
   {
@@ -29,9 +34,9 @@ export const CARTOON_AVATARS = [
     uri: 'https://api.dicebear.com/9.x/adventurer/png?seed=Atlas&backgroundColor=d1d4f9',
   },
   {
-    id: 'trader',
-    label: 'Trader',
-    uri: 'https://api.dicebear.com/9.x/bottts-neutral/png?seed=WallexTrader&backgroundColor=c0aede',
+    id: 'guardian',
+    label: 'Guardian',
+    uri: 'https://api.dicebear.com/9.x/bottts-neutral/png?seed=WallexGuardian&backgroundColor=c0aede',
   },
   {
     id: 'builder',

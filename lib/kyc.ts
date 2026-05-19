@@ -35,5 +35,5 @@ export async function submitKycSubmission(params: KycSubmissionParams) {
   });
 
   if (error) return { ok: false, demo: false, message: error.message };
-  return { ok: true, demo: false, message: 'KYC sent to Supabase for admin review.' };
+  return { ok: true, demo: false, message: 'KYC sent to Supabase for review.' };
 }

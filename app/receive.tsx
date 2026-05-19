@@ -31,9 +31,9 @@ export default function ReceiveScreen() {
 
   const qrBg = theme.isDark ? '#000000' : '#ffffff';
   const qrCellColor = theme.isDark ? theme.bg.primary : '#1f1b16';
-  const receiveAddress = selectedAsset.id === 'rxp' ? profile.wallet : selectedAsset.address;
-  const receiveNote = selectedAsset.id === 'rxp'
-    ? 'RXP is an internal Wallex wallet balance. Share this rxp_ address with another Wallex user.'
+  const receiveAddress = selectedAsset.id === 'xrp' ? profile.wallet : selectedAsset.address;
+  const receiveNote = selectedAsset.id === 'xrp'
+    ? 'Share this Ripple-style XRP wallet address with another Wallex user.'
     : `Only send ${selectedAsset.symbol} to this address.`;
 
   return (

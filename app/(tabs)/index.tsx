@@ -33,6 +33,7 @@ export default function HomeScreen() {
   const [copied, setCopied] = useState(false);
   const [displayBalance, setDisplayBalance] = useState(0);
   const liveMotion = useSharedValue(1);
+  const logoSpin = useSharedValue(0);
 
   const primaryAsset = CRYPTO_ASSETS[0];
   const shortAddress = shortWallet(profile.wallet, 16, 7);
@@ -55,11 +56,16 @@ export default function HomeScreen() {
   useEffect(() => {
     const stop = animateCounters();
     liveMotion.value = withRepeat(withTiming(1.045, { duration: 5000, easing: Easing.inOut(Easing.quad) }), -1, true);
+    logoSpin.value = withRepeat(withTiming(360, { duration: 4000, easing: Easing.linear }), -1, false);
     return stop;
   }, [animateCounters]);
 
   const liveBgStyle = useAnimatedStyle(() => ({
     transform: [{ scale: liveMotion.value }],
+  }));
+
+  const logoSpinStyle = useAnimatedStyle(() => ({
+    transform: [{ rotateY: `${logoSpin.value}deg` }],
   }));
 
   const onRefresh = useCallback(() => {
@@ -98,7 +104,7 @@ export default function HomeScreen() {
         {/* Header */}
         <Animated.View entering={FadeInDown.delay(0).duration(400)} style={styles.header}>
           <View style={styles.headerLeft}>
-            <Image source={{ uri: WALLEX_BRAND.logoUrl }} style={styles.logoImage} />
+            <Animated.Image source={{ uri: WALLEX_BRAND.logoUrl }} style={[styles.logoImage, logoSpinStyle]} />
             <Text style={[styles.appName, { color: theme.text.primary }]}>wallex</Text>
           </View>
           <TouchableOpacity style={styles.profileBtn} onPress={() => router.push('/(tabs)/profile')}>
@@ -169,7 +175,7 @@ export default function HomeScreen() {
 
             <View style={styles.walletInfoRow}>
               <ShieldCheck size={15} color="#67e8f9" />
-              <Text style={styles.walletInfoText}>Internal RXP wallet ID. Use this for Wallex-to-Wallex transfers.</Text>
+              <Text style={styles.walletInfoText}>Ripple-style XRP wallet address for Wallex-to-Wallex transfers.</Text>
             </View>
 
             <View style={styles.actionRow}>
@@ -207,12 +213,12 @@ export default function HomeScreen() {
           </LinearGradient>
         </Animated.View>
 
-        {/* RXP spotlight */}
+        {/* XRP spotlight */}
         <Animated.View entering={FadeInDown.delay(200).duration(400)} style={[styles.spotlight, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
           <View style={styles.spotlightLeft}>
-            <Text style={[styles.spotlightLabel, { color: theme.text.muted }]}>RXP Balance</Text>
+            <Text style={[styles.spotlightLabel, { color: theme.text.muted }]}>XRP Balance</Text>
             <Text style={[styles.spotlightAmount, { color: theme.text.primary }]}>
-              {balanceHidden ? '******' : `${displayRxp.toLocaleString('en-US', { maximumFractionDigits: 2 })} RXP`}
+              {balanceHidden ? '******' : `${displayRxp.toLocaleString('en-US', { maximumFractionDigits: 2 })} XRP`}
             </Text>
             <Text style={[styles.spotlightUsd, { color: theme.text.secondary }]}>
               {balanceHidden ? '***' : `~ $${(displayRxp * primaryAsset.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
