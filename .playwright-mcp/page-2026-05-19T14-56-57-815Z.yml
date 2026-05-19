@@ -1,0 +1,45 @@
+- generic:
+  - dialog:
+    - generic [ref=e9]:
+      - generic [ref=e10]:
+        - img [ref=e12] [cursor=pointer]
+        - generic [ref=e14]: Buy XRP
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - img [ref=e19]
+          - generic [ref=e23]: Fixed Wallex Rate
+          - generic [ref=e24]: KSh 180 per XRP
+          - generic [ref=e25]: Card checkout is routed through the server so private payment keys stay off the public app.
+        - generic [ref=e26]:
+          - generic [ref=e27]: Amount
+          - generic [ref=e28]:
+            - generic [ref=e30] [cursor=pointer]: 10 XRP
+            - generic [ref=e32] [cursor=pointer]: 25 XRP
+            - generic [ref=e34] [cursor=pointer]: 50 XRP
+            - generic [ref=e36] [cursor=pointer]: 100 XRP
+          - generic [ref=e37]:
+            - textbox "0" [ref=e38]: "50"
+            - generic [ref=e39]: XRP
+        - generic [ref=e40]:
+          - generic [ref=e41]: Receipt Email
+          - textbox "you@email.com" [ref=e42]: test@example.com
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - generic [ref=e45]: Wallet
+            - generic [ref=e46]: rWallexDemoXRP9s7Q8m5P2t4K6n3B1a
+          - generic [ref=e47]:
+            - generic [ref=e48]: Total
+            - generic [ref=e49]: KSh 9,000
+          - generic [ref=e50]:
+            - generic [ref=e51]: Gateway fee estimate
+            - generic [ref=e52]: KSh 1,800
+          - generic [ref=e53]:
+            - generic [ref=e54]: Card checkout estimate
+            - generic [ref=e55]: KSh 10,800
+        - generic [active] [ref=e60] [cursor=pointer]:
+          - img [ref=e56]
+          - generic [ref=e58]: Proceed to Card Payment
+        - generic [ref=e61]:
+          - img [ref=e62]
+          - generic [ref=e65]: Checkout opened.
+        - generic [ref=e59]: "Support: wallexcrypto@proton.me"

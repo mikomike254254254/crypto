@@ -1,0 +1,15 @@
+- generic [ref=e20]:
+  - generic [ref=e140]:
+    - generic [ref=e141]: Create your Wallex profile
+    - generic [ref=e142]: This demo profile becomes your RXP wallet identity.
+    - generic [ref=e143]:
+      - generic [ref=e144]: Full Name
+      - textbox "e.g. Alex Johnson" [ref=e145]
+    - generic [ref=e146]:
+      - generic [ref=e147]: Support Email Login
+      - textbox "you@email.com" [ref=e148]
+  - generic [ref=e149]:
+    - generic [ref=e151] [cursor=pointer]: Back
+    - generic [ref=e157]:
+      - generic [ref=e158]: Continue
+      - img [ref=e159]

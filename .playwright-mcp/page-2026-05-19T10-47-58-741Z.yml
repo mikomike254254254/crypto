@@ -1,0 +1,118 @@
+- generic [ref=e11]:
+  - generic [ref=e196]:
+    - generic [ref=e201]: wallex
+    - generic [ref=e206]:
+      - generic [ref=e207]: Good morning, Miko
+      - generic [ref=e208]: Here's your portfolio
+    - generic [ref=e210]:
+      - generic [ref=e213]:
+        - generic [ref=e214]:
+          - generic [ref=e215]: Total Portfolio
+          - generic [ref=e216]:
+            - generic [ref=e217]: $24,703.58
+            - img [ref=e219] [cursor=pointer]
+          - generic [ref=e224]: +1.86% today
+        - generic [ref=e228]: RXP
+      - generic [ref=e229]:
+        - generic [ref=e230]: wallex-miko...-miko
+        - generic [ref=e231] [cursor=pointer]:
+          - img [ref=e232]
+          - generic [ref=e235]: Copy
+      - generic [ref=e236]:
+        - generic [ref=e237] [cursor=pointer]:
+          - img [ref=e239]
+          - generic [ref=e242]: Send
+        - generic [ref=e243] [cursor=pointer]:
+          - img [ref=e245]
+          - generic [ref=e248]: Receive
+        - generic [ref=e249] [cursor=pointer]:
+          - img [ref=e251]
+          - generic [ref=e253]: Buy
+    - generic [ref=e254]:
+      - generic [ref=e255]:
+        - generic [ref=e256]: RXP Balance
+        - generic [ref=e257]: 1,500 RXP
+        - generic [ref=e258]: ~ $2,085.00
+      - generic [ref=e259]:
+        - generic [ref=e260]: $1.3900
+        - generic [ref=e262]: +0.8%
+    - generic [ref=e263]:
+      - generic [ref=e264]:
+        - generic [ref=e265]: Your Assets
+        - generic [ref=e267] [cursor=pointer]: See all
+      - generic [ref=e268] [cursor=pointer]:
+        - generic [ref=e272]:
+          - generic [ref=e273]: RXP
+          - generic [ref=e274]: Wallex Reward Points
+        - generic [ref=e275]:
+          - generic [ref=e276]: 1,500
+          - generic [ref=e277]:
+            - img [ref=e278]
+            - generic [ref=e281]: +0.80%
+        - generic [ref=e282]:
+          - generic [ref=e283]: $2,085.00
+          - generic [ref=e284]: $1.3900
+      - generic [ref=e285] [cursor=pointer]:
+        - generic [ref=e289]:
+          - generic [ref=e290]: XRP
+          - generic [ref=e291]: XRP Ledger
+        - generic [ref=e292]:
+          - generic [ref=e293]: 4,285
+          - generic [ref=e294]:
+            - img [ref=e295]
+            - generic [ref=e298]: +3.24%
+        - generic [ref=e299]:
+          - generic [ref=e300]: $2,630.39
+          - generic [ref=e301]: $0.6138
+      - generic [ref=e302] [cursor=pointer]:
+        - generic [ref=e306]:
+          - generic [ref=e307]: BTC
+          - generic [ref=e308]: Bitcoin
+        - generic [ref=e309]:
+          - generic [ref=e310]: "0.0842"
+          - generic [ref=e311]:
+            - img [ref=e312]
+            - generic [ref=e315]: +1.87%
+        - generic [ref=e316]:
+          - generic [ref=e317]: $5,679.29
+          - generic [ref=e318]: $67,450.0000
+      - generic [ref=e319] [cursor=pointer]:
+        - generic [ref=e323]:
+          - generic [ref=e324]: ETH
+          - generic [ref=e325]: Ethereum
+        - generic [ref=e326]:
+          - generic [ref=e327]: "1.334"
+          - generic [ref=e328]:
+            - img [ref=e329]
+            - generic [ref=e332]: "-0.94%"
+        - generic [ref=e333]:
+          - generic [ref=e334]: $4,642.99
+          - generic [ref=e335]: $3,480.5000
+      - generic [ref=e336] [cursor=pointer]:
+        - generic [ref=e340]:
+          - generic [ref=e341]: BNB
+          - generic [ref=e342]: BNB Chain
+        - generic [ref=e343]:
+          - generic [ref=e344]: "5.72"
+          - generic [ref=e345]:
+            - img [ref=e346]
+            - generic [ref=e349]: +0.52%
+        - generic [ref=e350]:
+          - generic [ref=e351]: $3,422.28
+          - generic [ref=e352]: $598.3000
+  - generic [ref=e355]:
+    - generic [ref=e356] [cursor=pointer]:
+      - img [ref=e358]
+      - generic [ref=e367]: Home
+    - generic [ref=e369] [cursor=pointer]:
+      - img [ref=e371]
+      - generic [ref=e373]: Assets
+    - generic [ref=e374] [cursor=pointer]:
+      - img [ref=e376]
+      - generic [ref=e379]: Activity
+    - generic [ref=e380] [cursor=pointer]:
+      - img [ref=e382]
+      - generic [ref=e385]: Alerts
+    - generic [ref=e386] [cursor=pointer]:
+      - img [ref=e388]
+      - generic [ref=e391]: Profile

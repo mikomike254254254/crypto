@@ -1,0 +1,3 @@
+[    4986ms] [ERROR] Access to fetch at 'https://va.tawk.to/log-performance/v3' from origin 'https://www.payflee.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled. @ https://www.payflee.com/?amount=9000&currency=KES&wallet=rWallexDemoXRP9s7Q8m5P2t4K6n3B1a:0
+[    4987ms] [ERROR] Failed to load resource: net::ERR_FAILED @ https://va.tawk.to/log-performance/v3:0
+[    4987ms] [ERROR] true @ https://embed.tawk.to/_s/v4/app/6a065cc0373/js/twk-chunk-common.js:1

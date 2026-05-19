@@ -1,0 +1,17 @@
+- generic [ref=e20]:
+  - generic [ref=e162]:
+    - generic [ref=e163]: Choose a cartoon profile
+    - generic [ref=e164]: No real human photos. Pick a female, male, or alternate Wallex character.
+    - generic [ref=e168]: Miko Mike
+    - generic [ref=e169]:
+      - generic [ref=e171] [cursor=pointer]:
+        - img [ref=e175]
+        - generic [ref=e177]: Female
+      - generic [ref=e182] [cursor=pointer]: Male
+      - generic [ref=e187] [cursor=pointer]: Trader
+      - generic [ref=e192] [cursor=pointer]: Builder
+  - generic [ref=e149]:
+    - generic [ref=e151] [cursor=pointer]: Back
+    - generic [ref=e157] [cursor=pointer]:
+      - generic [ref=e158]: Complete Wallet
+      - img [ref=e159]

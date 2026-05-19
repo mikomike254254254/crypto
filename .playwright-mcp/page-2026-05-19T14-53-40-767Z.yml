@@ -1,0 +1,101 @@
+- generic [ref=e1]:
+  - generic [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e26]: wallex
+      - generic [ref=e27]:
+        - generic [ref=e28]: Security
+        - generic [ref=e29]: Wallet
+        - generic [ref=e30]: KYC
+        - generic [ref=e31]: Support
+      - generic [ref=e32]:
+        - generic [ref=e34] [cursor=pointer]: Log in
+        - generic [ref=e36] [cursor=pointer]: Open Wallet
+    - generic [ref=e38]:
+      - generic [ref=e39]:
+        - generic [ref=e40]: Your crypto. Simply secure.
+        - generic [ref=e41]: A clean mobile-first XRP wallet for protected balances, identity review, secure transfers, and quick support.
+        - generic [ref=e42] [cursor=pointer]:
+          - generic [ref=e43]: Open Wallet
+          - img [ref=e44]
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - img [ref=e48]
+            - generic [ref=e50]: Secure wallet access
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e54]: PIN + KYC ready
+      - generic [ref=e58]:
+        - generic [ref=e59]: XRP RATE
+        - generic [ref=e60]: KSh 180
+        - generic [ref=e61]: Updated daily
+    - generic [ref=e63]:
+      - generic [ref=e64]: XRP wallet protection
+      - generic [ref=e65]: KYC review ready
+      - generic [ref=e66]: PIN secured access
+      - generic [ref=e67]: Daily value refresh
+      - generic [ref=e68]: Encrypted sessions
+      - generic [ref=e69]: Support online
+      - generic [ref=e70]: XRP wallet protection
+      - generic [ref=e71]: KYC review ready
+      - generic [ref=e72]: PIN secured access
+      - generic [ref=e73]: Daily value refresh
+      - generic [ref=e74]: Encrypted sessions
+      - generic [ref=e75]: Support online
+      - generic [ref=e76]: XRP wallet protection
+      - generic [ref=e77]: KYC review ready
+      - generic [ref=e78]: PIN secured access
+      - generic [ref=e79]: Daily value refresh
+      - generic [ref=e80]: Encrypted sessions
+      - generic [ref=e81]: Support online
+    - generic [ref=e82]:
+      - generic [ref=e83]:
+        - img [ref=e85]
+        - generic [ref=e89]: Fast XRP Transfers
+        - generic [ref=e90]: Move XRP between Wallex wallets with a simple address flow.
+      - generic [ref=e91]:
+        - img [ref=e93]
+        - generic [ref=e97]: Identity Protection
+        - generic [ref=e98]: KYC submission, review status, and secure profile controls.
+      - generic [ref=e99]:
+        - img [ref=e101]
+        - generic [ref=e105]: Private By Design
+        - generic [ref=e106]: Support, notifications, and security settings stay inside the wallet.
+    - generic [ref=e107]:
+      - generic [ref=e108]: Built Around Security
+      - generic [ref=e109]: "Wallex keeps the landing page calm because the real product is the wallet: secure access, verified accounts, and clear wallet movement."
+      - generic [ref=e110]:
+        - generic [ref=e111]:
+          - img [ref=e113]
+          - generic [ref=e116]: PIN access
+          - generic [ref=e117]: Set a wallet PIN from profile settings.
+        - generic [ref=e118]:
+          - img [ref=e120]
+          - generic [ref=e123]: KYC status
+          - generic [ref=e124]: Submit ID and track review progress.
+        - generic [ref=e125]:
+          - img [ref=e127]
+          - generic [ref=e130]: Document care
+          - generic [ref=e131]: ID references are sent to the Supabase review queue.
+        - generic [ref=e132]:
+          - img [ref=e134]
+          - generic [ref=e137]: Notifications
+          - generic [ref=e138]: Wallet updates and support messages arrive in-app.
+    - generic [ref=e139]:
+      - generic [ref=e140]: Start securely today
+      - generic [ref=e142] [cursor=pointer]: Open Wallet - It's Free
+      - generic [ref=e144] [cursor=pointer]: wallexcrypto@proton.me
+    - generic [ref=e145]:
+      - generic [ref=e149]: wallex
+      - generic [ref=e151] [cursor=pointer]: "(c) 2026 Wallex. All rights reserved. Support: wallexcrypto@proton.me"
+  - dialog [ref=e153]:
+    - generic [ref=e156]:
+      - generic [ref=e157]: Create account
+      - textbox "Email address" [active] [ref=e158]
+      - generic [ref=e160] [cursor=pointer]: Open Wallet
+      - generic [ref=e161] [cursor=pointer]:
+        - img [ref=e162]
+        - generic [ref=e167]: Continue with Google
+      - generic [ref=e168]:
+        - img [ref=e169]
+        - generic [ref=e172]: After Google signup you can set or change your password from security settings.
+      - generic [ref=e174] [cursor=pointer]: Close

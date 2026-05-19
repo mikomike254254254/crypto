@@ -1,0 +1,77 @@
+- generic [ref=e1]:
+  - generic [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e26]: wallex
+      - generic [ref=e27]:
+        - generic [ref=e28]: Markets
+        - generic [ref=e29]: Trade
+        - generic [ref=e30]: Earn
+        - generic [ref=e31]: Security
+      - generic [ref=e32]:
+        - generic [ref=e34] [cursor=pointer]: Log in
+        - generic [ref=e36] [cursor=pointer]: Open Wallet
+    - generic [ref=e38]:
+      - generic [ref=e39]:
+        - generic [ref=e40]: Your crypto. Simply secure.
+        - generic [ref=e41]: Trade, hold, and earn with confidence. Institutional-grade security with a beautiful interface.
+        - generic [ref=e42] [cursor=pointer]:
+          - generic [ref=e43]: Open Wallet
+          - img [ref=e44]
+        - generic [ref=e46]:
+          - generic [ref=e47]:
+            - img [ref=e48]
+            - generic [ref=e50]: Bank-grade security
+          - generic [ref=e51]:
+            - img [ref=e52]
+            - generic [ref=e54]: 2FA + MPC
+      - generic [ref=e58]:
+        - generic [ref=e59]: XRP PRICE
+        - generic [ref=e60]: $2.45
+        - generic [ref=e61]: +2.8%
+    - generic [ref=e63]:
+      - generic [ref=e64]: BTC $68,420
+      - generic [ref=e65]: ETH $2,650
+      - generic [ref=e66]: XRP $2.45
+      - generic [ref=e67]: SOL $148.90
+      - generic [ref=e68]: BNB $612
+      - generic [ref=e69]: ADA $0.42
+      - generic [ref=e70]: RXP KSh 180
+      - generic [ref=e71]: BTC $68,420
+      - generic [ref=e72]: ETH $2,650
+      - generic [ref=e73]: XRP $2.45
+      - generic [ref=e74]: SOL $148.90
+      - generic [ref=e75]: BNB $612
+      - generic [ref=e76]: ADA $0.42
+      - generic [ref=e77]: RXP KSh 180
+      - generic [ref=e78]: BTC $68,420
+      - generic [ref=e79]: ETH $2,650
+      - generic [ref=e80]: XRP $2.45
+      - generic [ref=e81]: SOL $148.90
+      - generic [ref=e82]: BNB $612
+      - generic [ref=e83]: ADA $0.42
+      - generic [ref=e84]: RXP KSh 180
+    - generic [ref=e85]:
+      - generic [ref=e86]:
+        - img [ref=e88]
+        - generic [ref=e92]: Lightning Fast
+        - generic [ref=e93]: Instant Wallex RXP transfers and trading workflows.
+      - generic [ref=e94]:
+        - img [ref=e96]
+        - generic [ref=e100]: Institutional Security
+        - generic [ref=e101]: KYC-ready controls, admin review, and wallet monitoring.
+      - generic [ref=e102]:
+        - img [ref=e104]
+        - generic [ref=e108]: Earn Rewards
+        - generic [ref=e109]: Admin can reward users with internal RXP balances.
+    - generic [ref=e110]:
+      - generic [ref=e111]: Start trading securely today
+      - generic [ref=e113] [cursor=pointer]: Open Wallet - It's Free
+      - generic [ref=e114]: wallexcrypto@proton.me
+    - generic [ref=e115]:
+      - generic [ref=e119]: wallex
+      - generic [ref=e120]: "(c) 2026 Wallex. All rights reserved. Support: wallexcrypto@proton.me"
+  - generic [ref=e125]:
+    - generic [ref=e126]: Create account
+    - textbox "Email address" [ref=e127]
+    - generic [ref=e129] [cursor=pointer]: Open Wallet
+    - generic [ref=e131] [cursor=pointer]: Close

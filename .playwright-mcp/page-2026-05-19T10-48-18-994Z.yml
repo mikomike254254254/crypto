@@ -1,0 +1,29 @@
+- generic [ref=e396]:
+  - generic [ref=e397]:
+    - img [ref=e399] [cursor=pointer]
+    - generic [ref=e401]: Buy RXP
+  - generic [ref=e403]:
+    - generic [ref=e404]:
+      - img [ref=e406]
+      - generic [ref=e410]: Fixed Wallex Rate
+      - generic [ref=e411]: KSh 180 per RXP
+      - generic [ref=e412]: Card checkout is routed through the server so private payment keys stay off the public app.
+    - generic [ref=e413]:
+      - generic [ref=e414]: Amount
+      - generic [ref=e415]:
+        - textbox "0" [ref=e416]: "50"
+        - generic [ref=e417]: RXP
+    - generic [ref=e418]:
+      - generic [ref=e419]: Receipt Email
+      - textbox "you@email.com" [ref=e420]: miko@example.com
+    - generic [ref=e421]:
+      - generic [ref=e422]:
+        - generic [ref=e423]: Wallet
+        - generic [ref=e424]: wallex-miko
+      - generic [ref=e425]:
+        - generic [ref=e426]: Total
+        - generic [ref=e427]: KSh 9,000
+    - generic [ref=e428] [cursor=pointer]:
+      - img [ref=e429]
+      - generic [ref=e431]: Pay by Card
+    - generic [ref=e432]: "Support: wallexcrypto@proton.me"

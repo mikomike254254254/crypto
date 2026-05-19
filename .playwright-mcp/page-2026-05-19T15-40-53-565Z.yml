@@ -1,0 +1,22 @@
+- generic [ref=e11]:
+  - generic [ref=e234]:
+    - generic [ref=e239]: wallex
+    - generic [ref=e244]:
+      - generic [ref=e245]: Good morning, Test
+      - generic [ref=e246]: Here's your portfolio
+  - generic [ref=e249]:
+    - generic [ref=e250] [cursor=pointer]:
+      - img [ref=e252]
+      - generic [ref=e261]: Home
+    - generic [ref=e263] [cursor=pointer]:
+      - img [ref=e265]
+      - generic [ref=e267]: Assets
+    - generic [ref=e268] [cursor=pointer]:
+      - img [ref=e270]
+      - generic [ref=e273]: Activity
+    - generic [ref=e274] [cursor=pointer]:
+      - img [ref=e276]
+      - generic [ref=e279]: Alerts
+    - generic [ref=e280] [cursor=pointer]:
+      - img [ref=e282]
+      - generic [ref=e285]: Profile

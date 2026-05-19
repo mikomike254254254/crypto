@@ -1,0 +1,19 @@
+- generic [ref=e1]:
+  - generic [ref=e133]:
+    - generic [ref=e135] [cursor=pointer]: Back
+    - generic [ref=e141]:
+      - generic [ref=e142]: Continue
+      - img [ref=e143]
+  - generic:
+    - generic:
+      - generic:
+        - dialog:
+          - generic:
+            - generic:
+              - generic:
+                - generic: Create account
+                - textbox "Email address": miko@example.com
+                - generic [active]:
+                  - generic: Open Wallet
+                - generic:
+                  - generic: Close

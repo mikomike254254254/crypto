@@ -1,0 +1,17 @@
+- generic [ref=e20]:
+  - generic [ref=e184]:
+    - generic [ref=e185]: Choose a cartoon profile
+    - generic [ref=e186]: No real human photos. Pick a female, male, or alternate Wallex character.
+    - generic [ref=e190]: Test User
+    - generic [ref=e191]:
+      - generic [ref=e193] [cursor=pointer]:
+        - img [ref=e197]
+        - generic [ref=e199]: Female
+      - generic [ref=e204] [cursor=pointer]: Male
+      - generic [ref=e209] [cursor=pointer]: Guardian
+      - generic [ref=e214] [cursor=pointer]: Builder
+  - generic [ref=e215]:
+    - generic [ref=e217] [cursor=pointer]: Back
+    - generic [ref=e224] [cursor=pointer]:
+      - generic [ref=e225]: Complete Wallet
+      - img [ref=e226]

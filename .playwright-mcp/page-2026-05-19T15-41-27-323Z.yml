@@ -1,0 +1,141 @@
+- generic [ref=e1]:
+  - generic [ref=e11]:
+    - generic [ref=e234]:
+      - generic [ref=e239]: wallex
+      - generic [ref=e244]:
+        - generic [ref=e245]: Good morning, Test
+        - generic [ref=e246]: Here's your portfolio
+      - generic [ref=e287]:
+        - generic [ref=e293]:
+          - generic [ref=e294]:
+            - generic [ref=e295]: Total Portfolio
+            - generic [ref=e296]:
+              - generic [ref=e297]: $15.00
+              - img [ref=e299] [cursor=pointer]
+            - generic [ref=e304]: +1.86% today
+          - generic [ref=e308]: XRP
+        - generic [ref=e309]:
+          - generic [ref=e310]: rLNwE2QaGBQUWU6m...54cH55v
+          - generic [ref=e311] [cursor=pointer]:
+            - img [ref=e312]
+            - generic [ref=e315]: Copy
+        - generic [ref=e316]:
+          - img [ref=e317]
+          - generic [ref=e320]: Ripple-style XRP wallet address for Wallex-to-Wallex transfers.
+        - generic [ref=e321]:
+          - generic [ref=e322] [cursor=pointer]:
+            - img [ref=e324]
+            - generic [ref=e327]: Send
+          - generic [ref=e328] [cursor=pointer]:
+            - img [ref=e330]
+            - generic [ref=e333]: Receive
+          - generic [ref=e334] [cursor=pointer]:
+            - img [ref=e336]
+            - generic [ref=e338]: Buy
+      - generic [ref=e339]:
+        - generic [ref=e340]:
+          - generic [ref=e341]: XRP Balance
+          - generic [ref=e342]: 10.79 XRP
+          - generic [ref=e343]: ~ $15.00
+        - generic [ref=e344]:
+          - generic [ref=e345]: $1.3900
+          - generic [ref=e347]: +0.8%
+      - generic [active] [ref=e349] [cursor=pointer]:
+        - img [ref=e351]
+        - generic [ref=e353]:
+          - generic [ref=e354]: M-Pesa Withdrawal
+          - generic [ref=e355]: KYC approval required before cashout.
+        - generic [ref=e357]: Verify
+      - generic [ref=e358]:
+        - generic [ref=e359]:
+          - generic [ref=e360]: Your Assets
+          - generic [ref=e362] [cursor=pointer]: See all
+        - generic [ref=e363] [cursor=pointer]:
+          - generic [ref=e367]:
+            - generic [ref=e368]: XRP
+            - generic [ref=e369]: Wallex XRP
+          - generic [ref=e370]:
+            - generic [ref=e371]: "10.79"
+            - generic [ref=e372]:
+              - img [ref=e373]
+              - generic [ref=e376]: +0.80%
+          - generic [ref=e377]:
+            - generic [ref=e378]: $15.00
+            - generic [ref=e379]: $1.3900
+        - generic [ref=e380] [cursor=pointer]:
+          - generic [ref=e384]:
+            - generic [ref=e385]: BTC
+            - generic [ref=e386]: Bitcoin
+          - generic [ref=e387]:
+            - generic [ref=e388]: "0"
+            - generic [ref=e389]:
+              - img [ref=e390]
+              - generic [ref=e393]: +1.87%
+          - generic [ref=e394]:
+            - generic [ref=e395]: $0.00
+            - generic [ref=e396]: $67,450.0000
+        - generic [ref=e397] [cursor=pointer]:
+          - generic [ref=e401]:
+            - generic [ref=e402]: ETH
+            - generic [ref=e403]: Ethereum
+          - generic [ref=e404]:
+            - generic [ref=e405]: "0"
+            - generic [ref=e406]:
+              - img [ref=e407]
+              - generic [ref=e410]: "-0.94%"
+          - generic [ref=e411]:
+            - generic [ref=e412]: $0.00
+            - generic [ref=e413]: $3,480.5000
+        - generic [ref=e414] [cursor=pointer]:
+          - generic [ref=e418]:
+            - generic [ref=e419]: BNB
+            - generic [ref=e420]: BNB Chain
+          - generic [ref=e421]:
+            - generic [ref=e422]: "0"
+            - generic [ref=e423]:
+              - img [ref=e424]
+              - generic [ref=e427]: +0.52%
+          - generic [ref=e428]:
+            - generic [ref=e429]: $0.00
+            - generic [ref=e430]: $598.3000
+        - generic [ref=e431] [cursor=pointer]:
+          - generic [ref=e435]:
+            - generic [ref=e436]: SOL
+            - generic [ref=e437]: Solana
+          - generic [ref=e438]:
+            - generic [ref=e439]: "0"
+            - generic [ref=e440]:
+              - img [ref=e441]
+              - generic [ref=e444]: +5.11%
+          - generic [ref=e445]:
+            - generic [ref=e446]: $0.00
+            - generic [ref=e447]: $182.6000
+    - generic [ref=e249]:
+      - generic [ref=e250] [cursor=pointer]:
+        - img [ref=e252]
+        - generic [ref=e261]: Home
+      - generic [ref=e263] [cursor=pointer]:
+        - img [ref=e265]
+        - generic [ref=e267]: Assets
+      - generic [ref=e268] [cursor=pointer]:
+        - img [ref=e270]
+        - generic [ref=e273]: Activity
+      - generic [ref=e274] [cursor=pointer]:
+        - img [ref=e276]
+        - generic [ref=e279]: Alerts
+      - generic [ref=e280] [cursor=pointer]:
+        - img [ref=e282]
+        - generic [ref=e285]: Profile
+  - generic [ref=e452]:
+    - generic [ref=e453]:
+      - generic [ref=e454]:
+        - img [ref=e455]
+        - generic [ref=e458]: M-Pesa Withdrawal
+      - img [ref=e460] [cursor=pointer]
+    - generic [ref=e463]: Withdrawals are reviewed against your verified Wallex KYC before processing.
+    - textbox "M-Pesa phone number" [ref=e464]
+    - textbox "Amount in KSh" [ref=e465]
+    - generic [ref=e467] [cursor=pointer]: Submit Withdrawal
+    - generic [ref=e468]:
+      - img [ref=e469]
+      - generic [ref=e471]: Your account must be verified by Wallex before M-Pesa withdrawals can be requested.
