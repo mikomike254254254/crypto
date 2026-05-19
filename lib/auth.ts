@@ -19,7 +19,7 @@ export function getAuthRedirectUrl(path = '/') {
 
 export async function signUpWithEmailPassword(params: EmailSignupParams) {
   if (!supabase) {
-    return { ok: true, mode: 'local' as const, message: 'Local demo signup saved on this device.' };
+    return { ok: false, mode: 'error' as const, message: 'Authentication service is not available. Please refresh the page and try again.' };
   }
 
   const { data, error } = await supabase.auth.signUp({
@@ -59,7 +59,7 @@ export async function signUpWithEmailPassword(params: EmailSignupParams) {
 
 export async function signInWithEmailPassword(email: string, password: string) {
   if (!supabase) {
-    return { ok: true, mode: 'local' as const, message: 'Demo login — no Supabase configured.', user: null, session: null };
+    return { ok: false, mode: 'error' as const, message: 'Authentication service is not available. Please refresh the page and try again.', user: null, session: null };
   }
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -88,7 +88,7 @@ export async function signInWithEmailPassword(email: string, password: string) {
 
 export async function signInWithGoogle() {
   if (!supabase) {
-    return { ok: true, mode: 'local' as const, message: 'Supabase is not configured locally. Continue with demo setup.' };
+    return { ok: false, mode: 'error' as const, message: 'Authentication service is not available. Please refresh the page and try again.' };
   }
 
   const { data, error } = await supabase.auth.signInWithOAuth({

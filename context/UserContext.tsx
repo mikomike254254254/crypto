@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { ImageSourcePropType } from 'react-native';
+import { ImageSourcePropType, Platform } from 'react-native';
 import { CARTOON_AVATARS } from '@/constants/brand';
 import { createRippleWalletAddress } from '@/lib/wallet';
 import { supabase, loadUserProfile, recordAuditLog } from '@/lib/supabase';

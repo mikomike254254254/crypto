@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { Check, Mail, Lock, User, ArrowRight, ShieldCheck, Zap, Globe, Download, Smartphone, X } from 'lucide-react-native';
 import { useUser } from '@/context/UserContext';
 import Svg, { Path } from 'react-native-svg';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 function GoogleIcon({ size = 18 }: { size?: number }) {
   return (
@@ -661,25 +662,13 @@ export default function OnboardingScreen() {
     
     if (!result.ok) {
       setAuthBusy(false);
-      setAuthNotice(result.message ?? 'Google login failed');
-      alert(result.message);
+      setAuthNotice(result.message ?? 'Google login failed. Please try again.');
       return;
     }
 
-    setAuthNotice(result.message ?? '');
-    
-    if (result.mode === 'local') {
-      setAuthBusy(false);
-      setName('Google User');
-      setEmail('google.user@wallex.online');
-      setPassword('google-oauth-password');
-      setConfirmPassword('google-oauth-password');
-      setIsLoggingIn(false);
-      setStep(2); // Go to avatar selection
-    } else {
-      // Keep loading spinner active during live redirect transition
-      setAuthBusy(true);
-    }
+    setAuthNotice('Connecting to Google... please wait.');
+    // Keep loading spinner active during live redirect transition
+    // The browser will redirect to Google OAuth — no further action needed here
   };
 
   // Render full screen Iframe on Web and WebView on native for Step 0
