@@ -33,6 +33,7 @@ yarn-error.*
 .admin-token.txt
 .local-server.pid
 .local-url.txt
+.static-deploy-path.txt
 
 # typescript
 *.tsbuildinfo
