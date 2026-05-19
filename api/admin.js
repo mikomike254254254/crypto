@@ -227,7 +227,21 @@ module.exports = async function handler(req, res) {
       return send(res, 200, { ok: true });
     }
 
+    if (action === 'promoteAdmin') {
+      const { email } = req.body || {};
+      if (!email) return send(res, 400, { error: 'Email is required to promote to admin' });
+      
+      const { error } = await supabase.from('admins').upsert({
+        email: email.trim().toLowerCase(),
+        created_at: new Date().toISOString(),
+      }, { onConflict: 'email' });
+      
+      if (error) throw error;
+      return send(res, 200, { ok: true });
+    }
+
     return send(res, 400, { error: 'Unknown action' });
+
   } catch (error) {
     return send(res, 500, { error: error.message || 'Action failed' });
   }

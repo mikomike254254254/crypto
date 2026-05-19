@@ -1,4 +1,4 @@
-import { supabase, isWalletSyncEnabled } from '@/lib/supabase';
+import { supabase, isWalletSyncEnabled, recordAuditLog } from '@/lib/supabase';
 
 type KycSubmissionParams = {
   wallet: string;
@@ -21,9 +21,10 @@ export async function submitKycSubmission(params: KycSubmissionParams) {
   const { data: auth } = await supabase.auth.getUser();
   const authUserId = auth.user?.id;
 
-  const { error } = await supabase.from('kyc_submissions').insert({
+  // Insert submission details
+  const { error: insertError } = await supabase.from('kyc_submissions').insert({
     auth_user_id: authUserId ?? null,
-    wallet: params.wallet,
+    wallet: params.wallet.toLowerCase(),
     email: params.email,
     full_name: params.fullName,
     id_type: params.idType,
@@ -34,6 +35,27 @@ export async function submitKycSubmission(params: KycSubmissionParams) {
     status: 'pending',
   });
 
-  if (error) return { ok: false, demo: false, message: error.message };
+  if (insertError) return { ok: false, demo: false, message: insertError.message };
+
+  // Also update user's profile status in DB
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ kyc_status: 'pending' })
+    .eq('wallet', params.wallet.toLowerCase());
+
+  if (updateError) {
+    console.error('Failed to update kyc_status in users table:', updateError);
+  }
+
+  // Record audit log
+  await recordAuditLog({
+    userId: authUserId ?? null,
+    wallet: params.wallet.toLowerCase(),
+    email: params.email,
+    eventType: 'kyc_submission_completed',
+    metadata: { idType: params.idType },
+  });
+
   return { ok: true, demo: false, message: 'KYC sent to Supabase for review.' };
 }
+

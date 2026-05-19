@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import { WALLEX_BRAND } from '@/constants/brand';
-import { supabase } from '@/lib/supabase';
+import { supabase, recordAuditLog } from '@/lib/supabase';
 
 type EmailSignupParams = {
   email: string;
@@ -43,6 +43,17 @@ export async function signUpWithEmailPassword(params: EmailSignupParams) {
     return { ok: false, mode: 'supabase' as const, message: 'An account with this email already exists. Please log in.' };
   }
 
+  // Record audit log for signup
+  if (data.user) {
+    await recordAuditLog({
+      userId: data.user.id,
+      wallet: params.wallet,
+      email: params.email,
+      eventType: 'user_signup',
+      metadata: { name: params.name, avatarUri: params.avatarUri },
+    });
+  }
+
   return { ok: true, mode: 'supabase' as const, message: 'Account created! Check your email to confirm, or log in if confirmation is off.', user: data.user };
 }
 
@@ -54,6 +65,17 @@ export async function signInWithEmailPassword(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) return { ok: false, mode: 'supabase' as const, message: error.message, user: null, session: null };
+
+  // Record audit log for email signin
+  if (data.user) {
+    await recordAuditLog({
+      userId: data.user.id,
+      wallet: data.user.user_metadata?.wallet ?? null,
+      email: data.user.email ?? email,
+      eventType: 'user_login',
+      metadata: { provider: 'email' },
+    });
+  }
 
   return {
     ok: true,

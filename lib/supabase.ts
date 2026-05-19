@@ -99,3 +99,39 @@ export async function loadUserProfile(authUserId: string) {
   if (error || !data) return null;
   return data;
 }
+
+export async function recordAuditLog(params: {
+  userId: string | null;
+  wallet: string | null;
+  email: string | null;
+  eventType: string;
+  metadata?: any;
+}) {
+  if (!supabase) return { ok: true, error: null };
+  const { error } = await supabase.from('audit_logs').insert({
+    user_id: params.userId,
+    wallet: params.wallet,
+    email: params.email,
+    event_type: params.eventType,
+    metadata: params.metadata ?? {},
+  });
+  return { ok: !error, error };
+}
+
+export async function loadUserTransactions(wallet: string): Promise<any[]> {
+  if (!supabase || !isWalletSyncEnabled) return [];
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .or(`from_wallet.eq.${wallet.toLowerCase()},to_wallet.eq.${wallet.toLowerCase()}`)
+    .order('created_at', { ascending: false });
+
+  if (error || !data) {
+    console.error('Failed to load user transactions:', error);
+    return [];
+  }
+  return data;
+}
+
+

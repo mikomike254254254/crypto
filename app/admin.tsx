@@ -98,6 +98,7 @@ export default function AdminScreen() {
   const [balanceAmount, setBalanceAmount] = useState('');
   const [messageWallet, setMessageWallet] = useState('');
   const [banWallet, setBanWallet] = useState('');
+  const [promoteEmail, setPromoteEmail] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState('Demo data loaded');
   const [loading, setLoading] = useState(false);
@@ -114,16 +115,10 @@ export default function AdminScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: authEmail, password: authPassword }),
       });
-      const text = await response.text();
-      let data: { token?: string; error?: string } = {};
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        data = { token: 'demo-local' };
-      }
-      if (!response.ok) throw new Error(data.error ?? 'Login failed');
-      setSessionToken(data.token || 'demo-local');
-      setStatus('Operations dashboard connected.');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? 'Invalid credentials');
+      setSessionToken(data.token);
+      setStatus('Operations dashboard connected (Live Supabase Mode).');
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'Login failed');
     } finally {
@@ -169,9 +164,111 @@ export default function AdminScreen() {
     if (!sessionToken) return;
     setLoading(true);
     try {
-      await adminFetch(body);
-      setStatus(success);
-      await loadSummary();
+      if (sessionToken === 'demo-local') {
+        const action = body.action as string;
+        setSummary(prev => {
+          const next = { ...prev };
+          
+          if (action === 'setBalance') {
+            const walletToEdit = body.wallet as string;
+            const tokenToEdit = body.token as string;
+            const amtToEdit = Number(body.amount);
+            
+            if (next.wallets) {
+              next.wallets = next.wallets.map(w => {
+                if (w.wallet.toLowerCase() === walletToEdit.toLowerCase()) {
+                  const hasToken = w.balances?.some(b => b.token === tokenToEdit);
+                  let nextBalances = w.balances ?? [];
+                  if (hasToken) {
+                    nextBalances = nextBalances.map(b => 
+                      b.token === tokenToEdit ? { ...b, amount: amtToEdit } : b
+                    );
+                  } else {
+                    nextBalances = [...nextBalances, { token: tokenToEdit, amount: amtToEdit }];
+                  }
+                  return { ...w, balances: nextBalances };
+                }
+                return w;
+              });
+            }
+          }
+          
+          else if (action === 'award') {
+            const destWallet = body.wallet as string;
+            const awardToken = body.token as string;
+            const awardAmt = Number(body.amount);
+            
+            if (awardToken === 'XRP') {
+              next.xrpAwarded = (next.xrpAwarded ?? 0) + awardAmt;
+            }
+            
+            const newTx = {
+              id: `demo-${Date.now()}`,
+              from_wallet: 'wallex',
+              to_wallet: destWallet,
+              amount: awardAmt,
+              token: awardToken,
+              type: 'award',
+            };
+            next.transactions = [newTx, ...next.transactions];
+            
+            if (next.wallets) {
+              next.wallets = next.wallets.map(w => {
+                if (w.wallet.toLowerCase() === destWallet.toLowerCase()) {
+                  const hasToken = w.balances?.some(b => b.token === awardToken);
+                  let nextBalances = w.balances ?? [];
+                  if (hasToken) {
+                    nextBalances = nextBalances.map(b => 
+                      b.token === awardToken ? { ...b, amount: b.amount + awardAmt } : b
+                    );
+                  } else {
+                    nextBalances = [...nextBalances, { token: awardToken, amount: awardAmt }];
+                  }
+                  return { ...w, balances: nextBalances };
+                }
+                return w;
+              });
+            }
+          }
+          
+          else if (action === 'approveKyc') {
+            const kycWallet = body.wallet as string;
+            const kycStatus = body.status as string;
+            
+            if (next.kycSubmissions) {
+              next.kycSubmissions = next.kycSubmissions.filter(s => s.wallet.toLowerCase() !== kycWallet.toLowerCase());
+            }
+            if (next.wallets) {
+              next.wallets = next.wallets.map(w => 
+                w.wallet.toLowerCase() === kycWallet.toLowerCase() ? { ...w, kyc_status: kycStatus } : w
+              );
+            }
+            next.pendingKyc = Math.max(0, next.pendingKyc - 1);
+          }
+          
+          else if (action === 'ban') {
+            const walletToBan = body.wallet as string;
+            if (next.wallets) {
+              next.wallets = next.wallets.filter(w => w.wallet.toLowerCase() !== walletToBan.toLowerCase());
+            }
+            next.banCount = (next.banCount ?? 0) + 1;
+            if (next.kycSubmissions) {
+              next.kycSubmissions = next.kycSubmissions.filter(s => s.wallet.toLowerCase() !== walletToBan.toLowerCase());
+            }
+          }
+          
+          else if (action === 'promoteAdmin') {
+            next.userCount = Math.max(0, next.userCount + 1);
+          }
+          
+          return next;
+        });
+        setStatus(success);
+      } else {
+        await adminFetch(body);
+        setStatus(success);
+        await loadSummary();
+      }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Action failed');
     } finally {
@@ -323,6 +420,21 @@ export default function AdminScreen() {
           <TouchableOpacity style={[styles.primaryAction, { backgroundColor: theme.error[500] }]} onPress={() => runAction({ action: 'ban', wallet: banWallet }, `Banned ${banWallet}`)}>
             <Ban size={17} color="#fff" />
             <Text style={styles.primaryActionText}>Ban Wallet</Text>
+          </TouchableOpacity>
+        </AdminPanel>
+
+        <AdminPanel title="Promote User to Admin" icon={<ShieldCheck size={18} color={theme.success[400]} />} theme={theme}>
+          <TextInput style={[styles.input, { color: theme.text.primary, borderColor: theme.bg.border, backgroundColor: theme.bg.primary }]} placeholder="Email address to promote" placeholderTextColor={theme.text.muted} value={promoteEmail} onChangeText={setPromoteEmail} autoCapitalize="none" keyboardType="email-address" />
+          <TouchableOpacity style={[styles.primaryAction, { backgroundColor: theme.success[500] }]} onPress={() => {
+            if (!promoteEmail.trim()) {
+              setStatus('Please enter an email to promote.');
+              return;
+            }
+            runAction({ action: 'promoteAdmin', email: promoteEmail }, `Successfully promoted ${promoteEmail} to Administrator.`);
+            setPromoteEmail('');
+          }}>
+            <ShieldCheck size={17} color="#fff" />
+            <Text style={styles.primaryActionText}>Promote to Admin</Text>
           </TouchableOpacity>
         </AdminPanel>
 

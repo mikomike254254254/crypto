@@ -2,7 +2,9 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { ImageSourcePropType } from 'react-native';
 import { CARTOON_AVATARS } from '@/constants/brand';
 import { createRippleWalletAddress } from '@/lib/wallet';
-import { supabase, loadUserProfile } from '@/lib/supabase';
+import { supabase, loadUserProfile, recordAuditLog } from '@/lib/supabase';
+
+let loggedInThisSession = false;
 
 export interface UserProfile {
   name: string;
@@ -129,6 +131,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         await hydrateProfileFromSupabase(session.user);
       }
       if (event === 'SIGNED_OUT') {
+        loggedInThisSession = false;
         setProfileState(DEFAULT_PROFILE);
       }
     }) ?? { data: { subscription: null } };
@@ -160,6 +163,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
       isOnboarded: true,
       supabaseId: user.id,
     }));
+
+    // Audit Log: user_login triggered exactly once per session
+    if (!loggedInThisSession) {
+      loggedInThisSession = true;
+      recordAuditLog({
+        userId: user.id,
+        wallet: wallet,
+        email: email,
+        eventType: 'user_login',
+        metadata: { source: 'session_hydration' }
+      }).catch((err) => console.error('Failed to write audit log:', err));
+    }
   }
 
   const setProfile = (updates: Partial<UserProfile>) => {
@@ -224,8 +239,21 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     if (supabase) {
+      const currentUserId = profile.supabaseId;
+      const currentWallet = profile.wallet;
+      const currentEmail = profile.email;
+
+      await recordAuditLog({
+        userId: currentUserId,
+        wallet: currentWallet,
+        email: currentEmail,
+        eventType: 'user_logout',
+        metadata: { manual: true }
+      }).catch((err) => console.error('Failed to write audit log:', err));
+
       await supabase.auth.signOut();
     }
+    loggedInThisSession = false;
     setProfileState(DEFAULT_PROFILE);
   };
 

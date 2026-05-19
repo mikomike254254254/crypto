@@ -21,6 +21,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
 import { AppTheme } from '@/constants/colors';
 import { CARTOON_AVATARS, WALLEX_BRAND } from '@/constants/brand';
+import { updateSupabasePassword } from '@/lib/auth';
 
 const PROFILE_PICTURES = CARTOON_AVATARS;
 
@@ -37,6 +38,11 @@ export default function ProfileScreen() {
   const [pin, setPin] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
   const [pinError, setPinError] = useState('');
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
 
   const kycStatus = profile.kycStatus;
   const kycConfig = {
@@ -73,6 +79,32 @@ export default function ProfileScreen() {
     setPinConfirm('');
     setPinError('');
     setPinModalVisible(false);
+  };
+
+  const savePassword = async () => {
+    setPasswordError('');
+    setPasswordSuccess('');
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+    
+    const res = await updateSupabasePassword(newPassword);
+    if (!res.ok) {
+      setPasswordError(res.message ?? 'Failed to update password.');
+    } else {
+      setPasswordSuccess('Password updated successfully!');
+      setTimeout(() => {
+        setPasswordModalVisible(false);
+        setNewPassword('');
+        setConfirmNewPassword('');
+        setPasswordSuccess('');
+      }, 1500);
+    }
   };
 
   return (
@@ -203,6 +235,8 @@ export default function ProfileScreen() {
         <View style={[styles.menuGroup, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
           <MenuRow icon={<Lock size={18} color={theme.primary[400]} />} iconBg={theme.primary[500] + '22'} label={profile.security.pinEnabled ? 'Change Wallet PIN' : 'Set Wallet PIN'} theme={theme} onPress={() => setPinModalVisible(true)} />
           <View style={[styles.divider, { backgroundColor: theme.bg.border }]} />
+          <MenuRow icon={<Lock size={18} color={theme.accent[400]} />} iconBg={theme.accent[500] + '22'} label="Change Password" theme={theme} onPress={() => setPasswordModalVisible(true)} />
+          <View style={[styles.divider, { backgroundColor: theme.bg.border }]} />
           <View style={styles.menuRow}>
             <View style={[styles.menuIconWrap, { backgroundColor: theme.success[500] + '22' }]}><Shield size={18} color={theme.success[400]} /></View>
             <View style={styles.themeInfo}>
@@ -285,6 +319,40 @@ export default function ProfileScreen() {
               <Text style={styles.pinSaveText}>Save PIN</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.pinCancel} onPress={() => setPinModalVisible(false)}>
+              <Text style={[styles.pinCancelText, { color: theme.text.secondary }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={passwordModalVisible} transparent animationType="fade" onRequestClose={() => setPasswordModalVisible(false)}>
+        <View style={styles.pinOverlay}>
+          <View style={[styles.pinCard, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
+            <Text style={[styles.pinTitle, { color: theme.text.primary }]}>Change Password</Text>
+            <Text style={[styles.pinSub, { color: theme.text.secondary }]}>Update your account password for secure web and mobile logins.</Text>
+            <TextInput
+              style={[styles.pinInput, { color: theme.text.primary, borderColor: theme.bg.border, backgroundColor: theme.bg.primary }]}
+              placeholder="New Password (Min 8 characters)"
+              placeholderTextColor={theme.text.muted}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+            />
+            <TextInput
+              style={[styles.pinInput, { color: theme.text.primary, borderColor: theme.bg.border, backgroundColor: theme.bg.primary }]}
+              placeholder="Confirm New Password"
+              placeholderTextColor={theme.text.muted}
+              value={confirmNewPassword}
+              onChangeText={setConfirmNewPassword}
+              secureTextEntry
+            />
+            {passwordError ? <Text style={[styles.pinError, { color: theme.error[400] }]}>{passwordError}</Text> : null}
+            {passwordSuccess ? <Text style={{ color: theme.success[400], fontSize: 13, fontFamily: 'Inter-SemiBold', textAlign: 'center' }}>{passwordSuccess}</Text> : null}
+            
+            <TouchableOpacity style={[styles.pinSave, { backgroundColor: theme.accent[500] }]} onPress={savePassword}>
+              <Text style={styles.pinSaveText}>Save Password</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.pinCancel} onPress={() => setPasswordModalVisible(false)}>
               <Text style={[styles.pinCancelText, { color: theme.text.secondary }]}>Cancel</Text>
             </TouchableOpacity>
           </View>

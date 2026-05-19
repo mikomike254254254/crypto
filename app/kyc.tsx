@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -15,6 +16,7 @@ import { ArrowLeft, Upload, CircleCheck as CheckCircle, User, FileText, Camera, 
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
 import { submitKycSubmission } from '@/lib/kyc';
+import { supabase } from '@/lib/supabase';
 
 const STEPS = ['Personal Info', 'ID Document', 'Selfie', 'Review'];
 
@@ -49,12 +51,63 @@ export default function KYCScreen() {
     ? !!(profile.kycDocuments.selfieUploaded || docRefs.selfie)
     : true;
 
-  const handleUpload = (doc: 'frontUploaded' | 'backUploaded' | 'selfieUploaded') => {
-    setUploading(doc);
-    setTimeout(() => {
-      uploadDocument(doc);
-      setUploading(null);
-    }, 1500);
+  const handleUpload = async (doc: 'frontUploaded' | 'backUploaded' | 'selfieUploaded') => {
+    if (Platform.OS !== 'web') {
+      // Mock for native or other non-web environments
+      setUploading(doc);
+      setTimeout(() => {
+        uploadDocument(doc);
+        setUploading(null);
+      }, 1200);
+      return;
+    }
+
+    // Web Platform file input picker
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png, image/jpeg, application/pdf';
+    
+    input.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      setUploading(doc);
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${profile.wallet}-${doc}-${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        if (!supabase) throw new Error('Supabase client is not initialized.');
+
+        const { data, error } = await supabase.storage
+          .from('kyc-documents')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (error) throw error;
+
+        // Get public URL of the uploaded document
+        const { data: { publicUrl } } = supabase.storage
+          .from('kyc-documents')
+          .getPublicUrl(filePath);
+
+        const docRefKey = doc === 'frontUploaded' ? 'front' : doc === 'backUploaded' ? 'back' : 'selfie';
+        setDocRefs(prev => ({
+          ...prev,
+          [docRefKey]: publicUrl || filePath,
+        }));
+        
+        uploadDocument(doc);
+      } catch (err: any) {
+        alert(`Upload failed: ${err.message || err}`);
+      } finally {
+        setUploading(null);
+      }
+    };
+    
+    input.click();
   };
 
   const handleSubmit = async () => {

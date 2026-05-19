@@ -19,8 +19,9 @@ import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
 import { CryptoColors } from '@/constants/colors';
 import { CRYPTO_ASSETS } from '@/constants/crypto';
-import { recordWalletTransfer } from '@/lib/supabase';
+import { recordWalletTransfer, loadWalletBalances } from '@/lib/supabase';
 import { isRippleWalletAddress } from '@/lib/wallet';
+import { useEffect } from 'react';
 
 export default function SendScreen() {
   const router = useRouter();
@@ -34,13 +35,33 @@ export default function SendScreen() {
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [balances, setBalances] = useState<Record<string, number>>({});
 
+  useEffect(() => {
+    async function fetchBalances() {
+      if (!profile.wallet) return;
+      try {
+        const bList = await loadWalletBalances(profile.wallet.toLowerCase());
+        const bMap: Record<string, number> = {};
+        bList.forEach(item => {
+          bMap[item.token.toUpperCase()] = item.amount;
+        });
+        setBalances(bMap);
+      } catch (err) {
+        console.error('Failed to load wallet balances in send screen:', err);
+      }
+    }
+    fetchBalances();
+  }, [profile.wallet]);
+
+  const currentBalance = balances[selectedAsset.symbol.toUpperCase()] ?? 0;
   const usdValue = parseFloat(amount || '0') * selectedAsset.price;
   const cleanAddress = address.trim();
   const amountValue = parseFloat(amount || '0');
+
   const isValid = selectedAsset.symbol === 'XRP'
-    ? isRippleWalletAddress(address.trim()) && amountValue > 0
-    : address.length > 10 && amountValue > 0;
+    ? isRippleWalletAddress(address.trim()) && amountValue > 0 && amountValue <= currentBalance
+    : address.length > 10 && amountValue > 0 && amountValue <= currentBalance;
 
   const handleSend = async () => {
     if (!isValid) return;
@@ -48,8 +69,8 @@ export default function SendScreen() {
     setSubmitting(true);
     setError(null);
     const result = await recordWalletTransfer({
-      fromWallet: profile.wallet,
-      toWallet: cleanAddress,
+      fromWallet: profile.wallet.toLowerCase(),
+      toWallet: cleanAddress.toLowerCase(),
       amount: Number(amount),
       token: selectedAsset.symbol,
       note,
@@ -57,7 +78,7 @@ export default function SendScreen() {
     setSubmitting(false);
 
     if (!result.ok) {
-      setError(result.error?.message ?? 'Transfer could not be recorded');
+      setError(result.error?.message ?? 'Transfer could not be recorded. Make sure the recipient wallet is registered on Wallex.');
       return;
     }
 
@@ -107,7 +128,7 @@ export default function SendScreen() {
                   <View style={styles.assetSelectorInfo}>
                     <Text style={[styles.assetSelectorSymbol, { color: theme.text.primary }]}>{selectedAsset.symbol}</Text>
                     <Text style={[styles.assetSelectorBalance, { color: theme.text.secondary }]}>
-                      Internal Wallex balance: {selectedAsset.balance.toLocaleString('en-US', { maximumFractionDigits: 4 })} {selectedAsset.symbol}
+                      Internal Wallex balance: {currentBalance.toLocaleString('en-US', { maximumFractionDigits: 4 })} {selectedAsset.symbol}
                     </Text>
                   </View>
                   <ChevronDown size={18} color={theme.text.secondary} />
@@ -135,7 +156,7 @@ export default function SendScreen() {
               <Animated.View entering={FadeInDown.delay(140).duration(400)}>
                 <View style={styles.amountHeader}>
                   <Text style={[styles.label, { color: theme.text.secondary }]}>Amount</Text>
-                  <TouchableOpacity onPress={() => setAmount(selectedAsset.balance.toString())} style={[styles.maxBtn, { backgroundColor: theme.accent[500] + '22', borderColor: theme.accent[500] + '44' }]}>
+                  <TouchableOpacity onPress={() => setAmount(currentBalance.toString())} style={[styles.maxBtn, { backgroundColor: theme.accent[500] + '22', borderColor: theme.accent[500] + '44' }]}>
                     <Text style={[styles.maxBtnText, { color: theme.accent[400] }]}>MAX</Text>
                   </TouchableOpacity>
                 </View>

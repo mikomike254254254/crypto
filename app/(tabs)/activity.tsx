@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
   ArrowUpRight,
@@ -11,38 +11,73 @@ import {
   XCircle,
 } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
-import { MOCK_TRANSACTIONS, Transaction } from '@/constants/crypto';
+import { useUser } from '@/context/UserContext';
+import { loadUserTransactions } from '@/lib/supabase';
 
 const FILTERS = ['All', 'Received', 'Sent', 'Swaps'];
 
 function timeAgo(date: Date): string {
   const diff = Date.now() - date.getTime();
   const h = Math.floor(diff / 3600000);
-  if (h < 1) return `${Math.floor(diff / 60000)}m ago`;
+  if (h < 1) return `${Math.max(1, Math.floor(diff / 60000))}m ago`;
   if (h < 24) return `${h}h ago`;
   return `${Math.floor(h / 24)}d ago`;
 }
 
 function shortAddr(addr: string): string {
-  if (addr === 'Internal Swap') return addr;
+  if (!addr) return '';
+  if (addr === 'Internal Swap' || addr === 'system' || addr === 'external') return addr;
   if (addr.length <= 14) return addr;
   return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
 }
 
 export default function ActivityScreen() {
   const { theme } = useTheme();
+  const { profile } = useUser();
   const [filter, setFilter] = useState('All');
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = MOCK_TRANSACTIONS.filter((t) => {
-    if (filter === 'Received') return t.type === 'receive';
-    if (filter === 'Sent') return t.type === 'send';
+  const fetchTransactions = useCallback(async () => {
+    if (!profile?.wallet) return;
+    try {
+      const txs = await loadUserTransactions(profile.wallet.toLowerCase());
+      setTransactions(txs);
+    } catch (err) {
+      console.error('Failed to load transactions:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [profile?.wallet]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchTransactions();
+    setRefreshing(false);
+  }, [fetchTransactions]);
+
+  const filtered = transactions.filter((t) => {
+    const isReceive = t.to_wallet.toLowerCase() === profile.wallet.toLowerCase();
+    const isSystem = t.from_wallet === 'system' || t.type === 'signup_bonus';
+    
+    if (filter === 'Received') return isReceive || isSystem;
+    if (filter === 'Sent') return !isReceive && !isSystem && t.type !== 'swap';
     if (filter === 'Swaps') return t.type === 'swap';
     return true;
   });
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg.primary }]} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent[500]} />}
+      >
         <Animated.View entering={FadeInDown.duration(400)}>
           <Text style={[styles.pageTitle, { color: theme.text.primary }]}>Activity</Text>
           <Text style={[styles.pageSub, { color: theme.text.secondary }]}>Transaction history</Text>
@@ -60,14 +95,18 @@ export default function ActivityScreen() {
           ))}
         </Animated.View>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <View style={styles.empty}>
+            <Text style={[styles.emptyText, { color: theme.text.muted }]}>Loading transactions...</Text>
+          </View>
+        ) : filtered.length === 0 ? (
           <View style={styles.empty}>
             <Text style={[styles.emptyText, { color: theme.text.muted }]}>No transactions found</Text>
           </View>
         ) : (
           filtered.map((tx, i) => (
-            <Animated.View key={tx.id} entering={FadeInDown.delay(100 + i * 50).duration(350)}>
-              <TxCard tx={tx} theme={theme} />
+            <Animated.View key={tx.id || i} entering={FadeInDown.delay(100 + i * 50).duration(350)}>
+              <TxCard tx={tx} wallet={profile.wallet} theme={theme} />
             </Animated.View>
           ))
         )}
@@ -78,26 +117,46 @@ export default function ActivityScreen() {
   );
 }
 
-function TxCard({ tx, theme }: { tx: Transaction; theme: any }) {
-  const isReceive = tx.type === 'receive';
+function TxCard({ tx, wallet, theme }: { tx: any; wallet: string; theme: any }) {
+  const isReceive = tx.to_wallet.toLowerCase() === wallet.toLowerCase();
+  const isSystem = tx.from_wallet === 'system' || tx.type === 'signup_bonus';
   const isSwap = tx.type === 'swap';
 
   const iconBg = isSwap
     ? theme.primary[500] + '22'
-    : isReceive
+    : (isReceive || isSystem)
     ? theme.success[500] + '22'
     : theme.error[500] + '22';
 
-  const iconColor = isSwap ? theme.primary[400] : isReceive ? theme.success[400] : theme.error[400];
-  const sign = isReceive ? '+' : '-';
-  const amountColor = isReceive ? theme.success[400] : theme.text.primary;
+  const iconColor = isSwap ? theme.primary[400] : (isReceive || isSystem) ? theme.success[400] : theme.error[400];
+  const sign = (isReceive || isSystem) ? '+' : '-';
+  const amountColor = (isReceive || isSystem) ? theme.success[400] : theme.text.primary;
+
+  const COIN_METADATA_PRICES: Record<string, number> = {
+    BTC: 67420.10,
+    ETH: 3512.40,
+    USDT: 1.00,
+    XRP: 0.601,
+    SOL: 148.22,
+  };
+  const price = COIN_METADATA_PRICES[tx.token.toUpperCase()] ?? 1.00;
+  const amountVal = Number(tx.amount);
+  const usdValue = amountVal * price;
+
+  const displayAddr = isSystem
+    ? 'Wallex Welcome Bonus'
+    : isReceive
+    ? `From ${shortAddr(tx.from_wallet || '')}`
+    : `To ${shortAddr(tx.to_wallet)}`;
+
+  const label = isSystem ? 'Signup Bonus' : isReceive ? 'Received' : 'Sent';
 
   return (
     <TouchableOpacity style={[styles.txCard, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]} activeOpacity={0.75}>
       <View style={[styles.txIcon, { backgroundColor: iconBg }]}>
         {isSwap ? (
           <RefreshCw size={18} color={iconColor} strokeWidth={2} />
-        ) : isReceive ? (
+        ) : (isReceive || isSystem) ? (
           <ArrowDownLeft size={18} color={iconColor} strokeWidth={2.5} />
         ) : (
           <ArrowUpRight size={18} color={iconColor} strokeWidth={2.5} />
@@ -107,20 +166,20 @@ function TxCard({ tx, theme }: { tx: Transaction; theme: any }) {
       <View style={styles.txInfo}>
         <View style={styles.txTopRow}>
           <Text style={[styles.txType, { color: theme.text.primary }]}>
-            {isSwap ? 'Swap' : isReceive ? 'Received' : 'Sent'} {tx.symbol}
+            {isSwap ? 'Swap' : label} {tx.token}
           </Text>
           <Text style={[styles.txAmount, { color: amountColor }]}>
-            {sign}{tx.amount.toLocaleString('en-US', { maximumFractionDigits: 4 })} {tx.symbol}
+            {sign}{amountVal.toLocaleString('en-US', { maximumFractionDigits: 6 })} {tx.token}
           </Text>
         </View>
         <View style={styles.txBottomRow}>
-          <Text style={[styles.txAddr, { color: theme.text.secondary }]}>{shortAddr(tx.address)}</Text>
+          <Text style={[styles.txAddr, { color: theme.text.secondary }]}>{displayAddr}</Text>
           <Text style={[styles.txUsd, { color: theme.text.secondary }]}>
-            ${tx.usdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ${usdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </Text>
         </View>
         <View style={styles.txMeta}>
-          <Text style={[styles.txTime, { color: theme.text.muted }]}>{timeAgo(tx.timestamp)}</Text>
+          <Text style={[styles.txTime, { color: theme.text.muted }]}>{timeAgo(new Date(tx.created_at))}</Text>
           <StatusBadge status={tx.status} theme={theme} />
         </View>
       </View>
@@ -128,8 +187,8 @@ function TxCard({ tx, theme }: { tx: Transaction; theme: any }) {
   );
 }
 
-function StatusBadge({ status, theme }: { status: Transaction['status']; theme: any }) {
-  if (status === 'confirmed') {
+function StatusBadge({ status, theme }: { status: string; theme: any }) {
+  if (status === 'confirmed' || status === 'completed') {
     return (
       <View style={[styles.statusBadge, { backgroundColor: theme.success[500] + '22' }]}>
         <CheckCircle size={10} color={theme.success[400]} />

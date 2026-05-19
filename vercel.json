@@ -22,6 +22,14 @@
     {
       "source": "/kyc",
       "destination": "/"
+    },
+    {
+      "source": "/onboarding",
+      "destination": "/"
+    },
+    {
+      "source": "/webview-app",
+      "destination": "/"
     }
   ]
 }

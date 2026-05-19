@@ -77,6 +77,21 @@ create table if not exists public.mpesa_withdraws (
   created_at timestamptz default now()
 );
 
+create table if not exists public.audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  wallet text,
+  email text,
+  event_type text not null,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.admins (
+  email text primary key,
+  created_at timestamptz default now()
+);
+
 create or replace function public.update_balance_on_tx()
 returns trigger as $$
 begin
@@ -187,6 +202,8 @@ alter table public.kyc_submissions enable row level security;
 alter table public.notifications enable row level security;
 alter table public.mpesa_withdraws enable row level security;
 alter table public.banned_wallets enable row level security;
+alter table public.audit_logs enable row level security;
+alter table public.admins enable row level security;
 
 drop policy if exists "read own user profile" on public.users;
 create policy "read own user profile" on public.users
@@ -270,3 +287,8 @@ values (
   array['image/jpeg', 'image/png', 'application/pdf']
 )
 on conflict (id) do nothing;
+
+drop policy if exists "Allow inserts for audit logs" on public.audit_logs;
+create policy "Allow inserts for audit logs" on public.audit_logs
+  for insert with check (true);
+
