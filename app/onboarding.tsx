@@ -633,17 +633,29 @@ export default function OnboardingScreen() {
 
   const handleGoogleAuth = async () => {
     setAuthBusy(true);
-    setAuthNotice('');
+    setAuthNotice('Redirecting to Google secure login...');
     const result = await signInWithGoogle();
-    setAuthBusy(false);
+    
+    if (!result.ok) {
+      setAuthBusy(false);
+      setAuthNotice(result.message ?? 'Google login failed');
+      alert(result.message);
+      return;
+    }
+
     setAuthNotice(result.message ?? '');
+    
     if (result.mode === 'local') {
+      setAuthBusy(false);
       setName('Google User');
       setEmail('google.user@wallex.online');
       setPassword('google-oauth-password');
       setConfirmPassword('google-oauth-password');
       setIsLoggingIn(false);
       setStep(2); // Go to avatar selection
+    } else {
+      // Keep loading spinner active during live redirect transition
+      setAuthBusy(true);
     }
   };
 

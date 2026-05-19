@@ -295,6 +295,18 @@ export default function AdminScreen() {
             <Lock size={17} color="#fff" />
             <Text style={styles.loginBtnText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
           </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.adminCredentialsHelper} 
+            onPress={() => {
+              setAuthEmail('admin@wallex.online');
+              setAuthPassword('wallex-admin');
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.adminCredentialsText, { color: theme.text.secondary }]}>
+              🔑 Default: <Text style={{ color: theme.accent[400], textDecorationLine: 'underline', fontFamily: 'Inter-SemiBold' }}>admin@wallex.online / wallex-admin</Text> (Autofill)
+            </Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -511,6 +523,8 @@ const styles = StyleSheet.create({
   loginBtn: { borderRadius: 16, paddingVertical: 15, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
   loginBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Inter-SemiBold' },
   loginError: { fontSize: 13, fontFamily: 'Inter-SemiBold', textAlign: 'center' },
+  adminCredentialsHelper: { marginTop: 6, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
+  adminCredentialsText: { fontSize: 13, fontFamily: 'Inter-Medium', textAlign: 'center' },
   content: { paddingHorizontal: 16, paddingBottom: 40 },
   opsHero: { borderRadius: 24, padding: 20, marginBottom: 14, backgroundColor: '#020617', overflow: 'hidden' },
   opsHeroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14 },

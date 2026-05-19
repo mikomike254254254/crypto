@@ -112,6 +112,41 @@ export function UserProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // 1. Manually parse URL hash/query params on mount to capture Google OAuth redirect
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const hash = window.location.hash;
+        const search = window.location.search;
+        let accessToken = '';
+        let refreshToken = '';
+
+        if (hash && hash.includes('access_token=')) {
+          const params = new URLSearchParams(hash.substring(1));
+          accessToken = params.get('access_token') || '';
+          refreshToken = params.get('refresh_token') || '';
+        } else if (search && search.includes('access_token=')) {
+          const params = new URLSearchParams(search);
+          accessToken = params.get('access_token') || '';
+          refreshToken = params.get('refresh_token') || '';
+        }
+
+        if (accessToken && refreshToken) {
+          try {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            // Clean up the address bar
+            if (window.history.pushState) {
+              window.history.pushState('', document.title, window.location.pathname);
+            } else {
+              window.location.hash = '';
+            }
+          } catch (e) {
+            console.error('Failed to manually parse/set Supabase OAuth session:', e);
+          }
+        }
+      }
+
       const { data } = await supabase.auth.getSession();
       const session = data.session;
 

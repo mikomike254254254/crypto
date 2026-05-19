@@ -138,6 +138,16 @@ module.exports = async function handler(req, res) {
         updated_at: new Date().toISOString(),
       }, { onConflict: 'wallet,token' });
       if (error) throw error;
+
+      if (tokenSymbol === 'XRP') {
+        const { error: balError } = await supabase.from('balances').upsert({
+          wallet,
+          amount: Number(amount),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'wallet' });
+        if (balError) throw balError;
+      }
+
       await supabase.from('notifications').insert({
         user_id: wallet,
         message: `Your ${tokenSymbol} wallet balance was updated.`,
