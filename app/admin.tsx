@@ -14,11 +14,14 @@ import type { ReactNode } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
   ArrowLeft,
+  Activity,
   BadgeCheck,
   Ban,
   Bell,
   Coins,
+  FileCheck,
   KeyRound,
+  Radio,
   Send,
   ShieldCheck,
   Users,
@@ -29,6 +32,8 @@ import { WALLEX_BRAND } from '@/constants/brand';
 type AdminSummary = {
   userCount: number;
   pendingKyc: number;
+  banCount?: number;
+  rxpAwarded?: number;
   transactions: Array<{
     id: string;
     from_wallet?: string | null;
@@ -38,15 +43,33 @@ type AdminSummary = {
     type?: string;
     created_at?: string;
   }>;
+  kycSubmissions?: Array<{
+    id: string;
+    wallet: string;
+    email?: string | null;
+    full_name?: string | null;
+    id_type?: string | null;
+    status?: string | null;
+    created_at?: string;
+    front_document_url?: string | null;
+    back_document_url?: string | null;
+    selfie_document_url?: string | null;
+  }>;
 };
 
 const DEMO_SUMMARY: AdminSummary = {
   userCount: 1284,
   pendingKyc: 12,
+  banCount: 3,
+  rxpAwarded: 24890,
   transactions: [
     { id: 'demo-1', from_wallet: 'admin', to_wallet: 'wallex-nairobi', amount: 80, token: 'RXP', type: 'award' },
     { id: 'demo-2', from_wallet: 'wallex-asia', to_wallet: 'wallex-usa', amount: 25, token: 'RXP', type: 'transfer' },
     { id: 'demo-3', from_wallet: 'external', to_wallet: 'wallex-lagos', amount: 150, token: 'RXP', type: 'receive' },
+  ],
+  kycSubmissions: [
+    { id: 'kyc-1', wallet: 'rxp_amina_0kg4q9z', email: 'amina@example.com', full_name: 'Amina K', id_type: 'National ID', status: 'pending' },
+    { id: 'kyc-2', wallet: 'rxp_michael_1jh9pab', email: 'michael@example.com', full_name: 'Michael A', id_type: 'Passport', status: 'pending' },
   ],
 };
 
@@ -135,6 +158,18 @@ export default function AdminScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Animated.View entering={FadeInDown.duration(360)} style={styles.opsHero}>
+          <View style={styles.opsHeroTop}>
+            <View style={styles.livePill}>
+              <Radio size={13} color="#67e8f9" />
+              <Text style={styles.livePillText}>Operations live desk</Text>
+            </View>
+            <Text style={styles.opsDomain}>{WALLEX_BRAND.siteName}</Text>
+          </View>
+          <Text style={styles.opsTitle}>Admin command center</Text>
+          <Text style={styles.opsBody}>Review KYC, reward RXP, monitor wallet movement, and keep support actions in one clean place.</Text>
+        </Animated.View>
+
         <Animated.View entering={FadeInDown.duration(360)} style={[styles.tokenCard, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
           <KeyRound size={18} color={theme.accent[400]} />
           <TextInput
@@ -157,7 +192,35 @@ export default function AdminScreen() {
           <Metric title="Users" value={summary.userCount.toLocaleString()} icon={<Users size={20} color={theme.accent[400]} />} theme={theme} />
           <Metric title="Pending KYC" value={summary.pendingKyc.toLocaleString()} icon={<ShieldCheck size={20} color={theme.warning[400]} />} theme={theme} />
           <Metric title="RXP Rate" value={`KSh ${WALLEX_BRAND.rxpRateKes}`} icon={<Coins size={20} color={theme.success[400]} />} theme={theme} />
+          <Metric title="RXP Awarded" value={Number(summary.rxpAwarded ?? 0).toLocaleString()} icon={<Activity size={20} color={theme.primary[400]} />} theme={theme} />
+          <Metric title="Banned Wallets" value={Number(summary.banCount ?? 0).toLocaleString()} icon={<Ban size={20} color={theme.error[400]} />} theme={theme} />
         </View>
+
+        <AdminPanel title="KYC Review Queue" icon={<FileCheck size={18} color={theme.warning[400]} />} theme={theme}>
+          {(summary.kycSubmissions ?? []).length === 0 ? (
+            <Text style={[styles.emptyPanelText, { color: theme.text.secondary }]}>No pending KYC submissions.</Text>
+          ) : (
+            (summary.kycSubmissions ?? []).map((submission) => (
+              <View key={submission.id} style={[styles.kycQueueRow, { borderColor: theme.bg.border, backgroundColor: theme.bg.primary }]}>
+                <View style={styles.kycQueueInfo}>
+                  <Text style={[styles.kycQueueName, { color: theme.text.primary }]}>{submission.full_name || 'Unnamed user'}</Text>
+                  <Text style={[styles.kycQueueWallet, { color: theme.text.secondary }]}>{shortWallet(submission.wallet)} - {submission.id_type || 'ID'}</Text>
+                  <Text style={[styles.kycQueueDocs, { color: theme.text.muted }]}>
+                    Front {submission.front_document_url ? 'link' : 'flag'} / Back {submission.back_document_url ? 'link' : 'flag'} / Selfie {submission.selfie_document_url ? 'link' : 'flag'}
+                  </Text>
+                </View>
+                <View style={styles.kycMiniActions}>
+                  <TouchableOpacity style={[styles.kycMiniBtn, { backgroundColor: theme.success[500] }]} onPress={() => runAction({ action: 'approveKyc', wallet: submission.wallet, status: 'approved' }, `Approved KYC for ${submission.wallet}`)}>
+                    <Text style={styles.kycMiniText}>Approve</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.kycMiniBtn, { backgroundColor: theme.error[500] }]} onPress={() => runAction({ action: 'approveKyc', wallet: submission.wallet, status: 'rejected' }, `Rejected KYC for ${submission.wallet}`)}>
+                    <Text style={styles.kycMiniText}>Reject</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+        </AdminPanel>
 
         <AdminPanel title="Reward Crypto" icon={<Coins size={18} color={theme.accent[400]} />} theme={theme}>
           <TextInput style={[styles.input, { color: theme.text.primary, borderColor: theme.bg.border, backgroundColor: theme.bg.primary }]} placeholder="Wallet address" placeholderTextColor={theme.text.muted} value={wallet} onChangeText={setWallet} autoCapitalize="none" />
@@ -253,6 +316,13 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontFamily: 'Inter-Bold' },
   headerSub: { fontSize: 12, fontFamily: 'Inter-Regular', marginTop: 1 },
   content: { paddingHorizontal: 16, paddingBottom: 40 },
+  opsHero: { borderRadius: 24, padding: 20, marginBottom: 14, backgroundColor: '#020617', overflow: 'hidden' },
+  opsHeroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14 },
+  livePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#0e749033', borderWidth: 1, borderColor: '#67e8f955', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  livePillText: { color: '#cffafe', fontSize: 11, fontFamily: 'Inter-SemiBold' },
+  opsDomain: { color: '#94a3b8', fontSize: 12, fontFamily: 'Inter-SemiBold' },
+  opsTitle: { color: '#ffffff', fontSize: 28, fontFamily: 'Inter-Bold', letterSpacing: 0, marginBottom: 6 },
+  opsBody: { color: '#cbd5e1', fontSize: 13, fontFamily: 'Inter-Regular', lineHeight: 20 },
   tokenCard: { borderWidth: 1, borderRadius: 18, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   tokenInput: { flex: 1, fontSize: 14, fontFamily: 'Inter-Regular', paddingVertical: 8 },
   smallBtn: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9 },
@@ -266,6 +336,15 @@ const styles = StyleSheet.create({
   panel: { borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 12, gap: 10 },
   panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
   panelTitle: { fontSize: 16, fontFamily: 'Inter-Bold' },
+  emptyPanelText: { fontSize: 13, fontFamily: 'Inter-Medium', paddingVertical: 8 },
+  kycQueueRow: { borderWidth: 1, borderRadius: 16, padding: 12, marginBottom: 9, gap: 10 },
+  kycQueueInfo: { gap: 3 },
+  kycQueueName: { fontSize: 14, fontFamily: 'Inter-Bold' },
+  kycQueueWallet: { fontSize: 12, fontFamily: 'Inter-Medium' },
+  kycQueueDocs: { fontSize: 11, fontFamily: 'Inter-Regular' },
+  kycMiniActions: { flexDirection: 'row', gap: 8 },
+  kycMiniBtn: { flex: 1, borderRadius: 12, alignItems: 'center', paddingVertical: 10 },
+  kycMiniText: { color: '#fff', fontSize: 12, fontFamily: 'Inter-SemiBold' },
   input: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 13, fontSize: 14, fontFamily: 'Inter-Regular' },
   textArea: { minHeight: 82, textAlignVertical: 'top' },
   primaryAction: { backgroundColor: '#0f172a', borderRadius: 14, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },

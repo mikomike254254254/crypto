@@ -20,6 +20,7 @@ import { useUser } from '@/context/UserContext';
 import { CryptoColors } from '@/constants/colors';
 import { CRYPTO_ASSETS } from '@/constants/crypto';
 import { recordWalletTransfer } from '@/lib/supabase';
+import { isRxpWalletAddress } from '@/lib/wallet';
 
 export default function SendScreen() {
   const router = useRouter();
@@ -35,7 +36,11 @@ export default function SendScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const usdValue = parseFloat(amount || '0') * selectedAsset.price;
-  const isValid = address.length > 10 && parseFloat(amount) > 0;
+  const cleanAddress = address.trim().toLowerCase();
+  const amountValue = parseFloat(amount || '0');
+  const isValid = selectedAsset.symbol === 'RXP'
+    ? isRxpWalletAddress(cleanAddress) && amountValue > 0
+    : address.length > 10 && amountValue > 0;
 
   const handleSend = async () => {
     if (!isValid) return;
@@ -44,7 +49,7 @@ export default function SendScreen() {
     setError(null);
     const result = await recordWalletTransfer({
       fromWallet: profile.wallet,
-      toWallet: address.trim(),
+      toWallet: cleanAddress,
       amount: Number(amount),
       token: selectedAsset.symbol,
       note,
@@ -114,7 +119,7 @@ export default function SendScreen() {
                 <View style={[styles.inputWrapper, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
                   <TextInput
                     style={[styles.input, { color: theme.text.primary }]}
-                    placeholder="wallex-recipient-wallet"
+                    placeholder="rxp_member_1a2b3c4"
                     placeholderTextColor={theme.text.muted}
                     value={address}
                     onChangeText={setAddress}
@@ -172,8 +177,11 @@ export default function SendScreen() {
                 </View>
                 <View style={styles.feeRow}>
                   <Text style={[styles.feeLabel, { color: theme.text.secondary }]}>Ledger</Text>
-                  <Text style={[styles.feeValue, { color: theme.text.primary }]}>Wallex internal RXP</Text>
+                  <Text style={[styles.feeValue, { color: theme.text.primary }]}>Wallex internal RXP wallet</Text>
                 </View>
+                <Text style={[styles.feeNote, { color: theme.text.secondary }]}>
+                  RXP is your Wallex internal balance. It is not external XRP unless Wallex later connects a real chain bridge.
+                </Text>
               </Animated.View>
             </>
           ) : (
@@ -192,7 +200,7 @@ export default function SendScreen() {
                 <View style={[styles.divider, { backgroundColor: theme.bg.border }]} />
                 {[
                   ['To', `${address.slice(0, 10)}...${address.slice(-8)}`],
-                  ['Ledger', 'Wallex internal RXP'],
+                  ['Ledger', 'Wallex internal RXP wallet'],
                   ['Fee', `0.00 ${selectedAsset.symbol}`],
                   ['Note', note || '-'],
                 ].map(([k, v]) => (
@@ -257,6 +265,7 @@ const styles = StyleSheet.create({
   feeRow: { flexDirection: 'row', justifyContent: 'space-between' },
   feeLabel: { fontSize: 13, fontFamily: 'Inter-Regular' },
   feeValue: { fontSize: 13, fontFamily: 'Inter-Medium' },
+  feeNote: { fontSize: 12, fontFamily: 'Inter-Regular', lineHeight: 18, marginTop: 4 },
   confirmCard: { borderRadius: 20, padding: 20, borderWidth: 1, alignItems: 'center', marginTop: 8 },
   confirmTitle: { fontSize: 14, fontFamily: 'Inter-Regular', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 1 },
   confirmAmountRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },

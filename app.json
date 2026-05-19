@@ -11,6 +11,19 @@
     "ios": {
       "supportsTablet": true
     },
+    "android": {
+      "package": "online.wallex.app",
+      "permissions": [],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/wallex-logo.png",
+        "backgroundColor": "#000000"
+      }
+    },
+    "splash": {
+      "image": "./assets/images/wallex-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
     "web": {
       "bundler": "metro",
       "output": "single",

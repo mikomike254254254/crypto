@@ -29,6 +29,7 @@ function RootLayoutInner() {
         <Stack.Screen name="receive" options={{ presentation: 'modal' }} />
         <Stack.Screen name="buy" options={{ presentation: 'modal' }} />
         <Stack.Screen name="kyc" />
+        <Stack.Screen name="webview-app" />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />

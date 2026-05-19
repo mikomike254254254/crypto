@@ -30,6 +30,8 @@ export default function BuyScreen() {
 
   const units = Number(rxpAmount || 0);
   const totalKes = units * WALLEX_BRAND.rxpRateKes;
+  const platformFee = Math.round(totalKes * 0.2);
+  const estimatedCardTotal = totalKes + platformFee;
   const isValid = units > 0 && email.includes('@');
 
   const startCheckout = async () => {
@@ -91,6 +93,17 @@ export default function BuyScreen() {
 
           <Animated.View entering={FadeInDown.delay(80).duration(400)}>
             <Text style={[styles.label, { color: theme.text.secondary }]}>Amount</Text>
+            <View style={styles.quickRow}>
+              {[10, 25, 50, 100].map((quick) => (
+                <TouchableOpacity
+                  key={quick}
+                  style={[styles.quickChip, { backgroundColor: Number(rxpAmount) === quick ? theme.accent[500] + '22' : theme.bg.card, borderColor: Number(rxpAmount) === quick ? theme.accent[500] + '66' : theme.bg.border }]}
+                  onPress={() => setRxpAmount(String(quick))}
+                >
+                  <Text style={[styles.quickChipText, { color: Number(rxpAmount) === quick ? theme.accent[400] : theme.text.secondary }]}>{quick} RXP</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <View style={[styles.inputWrap, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
               <TextInput
                 style={[styles.amountInput, { color: theme.text.primary }]}
@@ -126,11 +139,19 @@ export default function BuyScreen() {
               <Text style={[styles.summaryLabel, { color: theme.text.secondary }]}>Total</Text>
               <Text style={[styles.summaryValue, { color: theme.text.primary }]}>KSh {totalKes.toLocaleString('en-KE')}</Text>
             </View>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: theme.text.secondary }]}>Gateway fee estimate</Text>
+              <Text style={[styles.summaryValue, { color: theme.text.primary }]}>KSh {platformFee.toLocaleString('en-KE')}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: theme.text.secondary }]}>Card checkout estimate</Text>
+              <Text style={[styles.summaryValue, { color: theme.text.primary }]}>KSh {estimatedCardTotal.toLocaleString('en-KE')}</Text>
+            </View>
           </View>
 
           <TouchableOpacity style={[styles.payBtn, !isValid && { opacity: 0.45 }]} onPress={startCheckout} disabled={!isValid || loading} activeOpacity={0.86}>
             <CreditCard size={20} color="#fff" />
-            <Text style={styles.payBtnText}>{loading ? 'Starting Checkout...' : 'Pay by Card'}</Text>
+            <Text style={styles.payBtnText}>{loading ? 'Starting Checkout...' : 'Proceed to Card Payment'}</Text>
           </TouchableOpacity>
 
           {result && (
@@ -170,6 +191,9 @@ const styles = StyleSheet.create({
   rateValue: { fontSize: 29, fontFamily: 'Inter-Bold', letterSpacing: 0 },
   rateNote: { fontSize: 13, fontFamily: 'Inter-Regular', lineHeight: 19 },
   label: { fontSize: 12, fontFamily: 'Inter-SemiBold', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, marginTop: 18 },
+  quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  quickChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
+  quickChipText: { fontSize: 12, fontFamily: 'Inter-SemiBold' },
   inputWrap: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingRight: 16 },
   amountInput: { flex: 1, paddingHorizontal: 16, paddingVertical: 18, fontSize: 28, fontFamily: 'Inter-Bold' },
   inputSuffix: { fontSize: 15, fontFamily: 'Inter-SemiBold' },

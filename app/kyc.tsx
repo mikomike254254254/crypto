@@ -14,6 +14,7 @@ import Animated, { FadeInRight, FadeInDown } from 'react-native-reanimated';
 import { ArrowLeft, Upload, CircleCheck as CheckCircle, User, FileText, Camera, Clock, Shield, CircleAlert as AlertCircle, ChevronRight, X } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
+import { submitKycSubmission } from '@/lib/kyc';
 
 const STEPS = ['Personal Info', 'ID Document', 'Selfie', 'Review'];
 
@@ -33,13 +34,19 @@ export default function KYCScreen() {
   });
   const [selectedDocType, setSelectedDocType] = useState<string | null>(profile.kycDocuments.idType);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [submitStatus, setSubmitStatus] = useState('');
+  const [docRefs, setDocRefs] = useState({
+    front: '',
+    back: '',
+    selfie: '',
+  });
 
   const canAdvance = step === 0
     ? !!(form.firstName && form.lastName && form.dob && form.nationality)
     : step === 1
-    ? !!(selectedDocType && profile.kycDocuments.frontUploaded && profile.kycDocuments.backUploaded)
+    ? !!(selectedDocType && (profile.kycDocuments.frontUploaded || docRefs.front) && (profile.kycDocuments.backUploaded || docRefs.back))
     : step === 2
-    ? !!profile.kycDocuments.selfieUploaded
+    ? !!(profile.kycDocuments.selfieUploaded || docRefs.selfie)
     : true;
 
   const handleUpload = (doc: 'frontUploaded' | 'backUploaded' | 'selfieUploaded') => {
@@ -50,10 +57,20 @@ export default function KYCScreen() {
     }, 1500);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (step < STEPS.length - 1) {
       setStep(step + 1);
     } else {
+      setSubmitStatus('Sending KYC to Supabase review queue...');
+      const result = await submitKycSubmission({
+        wallet: profile.wallet,
+        email: profile.email,
+        fullName: `${form.firstName} ${form.lastName}`.trim(),
+        idType: selectedDocType ?? '',
+        personalInfo: form,
+        documentUrls: docRefs,
+      });
+      setSubmitStatus(result.message ?? '');
       submitKyc(form, selectedDocType ?? '');
       router.back();
     }
@@ -96,14 +113,15 @@ export default function KYCScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {step === 0 && <PersonalInfoStep form={form} setForm={setForm} theme={theme} />}
-        {step === 1 && <DocumentStep theme={theme} selectedDocType={selectedDocType} setSelectedDocType={setSelectedDocType} profile={profile} uploading={uploading} onUpload={handleUpload} />}
-        {step === 2 && <SelfieStep theme={theme} profile={profile} uploading={uploading} onUpload={handleUpload} />}
-        {step === 3 && <ReviewStep form={form} theme={theme} selectedDocType={selectedDocType} profile={profile} />}
+        {step === 1 && <DocumentStep theme={theme} selectedDocType={selectedDocType} setSelectedDocType={setSelectedDocType} profile={profile} uploading={uploading} onUpload={handleUpload} docRefs={docRefs} setDocRefs={setDocRefs} />}
+        {step === 2 && <SelfieStep theme={theme} profile={profile} uploading={uploading} onUpload={handleUpload} docRefs={docRefs} setDocRefs={setDocRefs} />}
+        {step === 3 && <ReviewStep form={form} theme={theme} selectedDocType={selectedDocType} profile={profile} docRefs={docRefs} />}
 
         <View style={styles.actionArea}>
+          {submitStatus ? <Text style={[styles.submitStatus, { color: theme.text.secondary }]}>{submitStatus}</Text> : null}
           <TouchableOpacity
             style={[styles.continueBtn, { backgroundColor: canAdvance ? theme.accent[500] : theme.bg.border }]}
-            onPress={handleSubmit}
+            onPress={() => void handleSubmit()}
             disabled={!canAdvance}
             activeOpacity={0.8}
           >
@@ -164,7 +182,7 @@ function PersonalInfoStep({ form, setForm, theme }: any) {
   );
 }
 
-function DocumentStep({ theme, selectedDocType, setSelectedDocType, profile, uploading, onUpload }: any) {
+function DocumentStep({ theme, selectedDocType, setSelectedDocType, profile, uploading, onUpload, docRefs, setDocRefs }: any) {
   const DOC_TYPES = ['Passport', "Driver's License", 'National ID'];
   const docs = profile.kycDocuments;
 
@@ -192,6 +210,14 @@ function DocumentStep({ theme, selectedDocType, setSelectedDocType, profile, upl
         uploading={uploading === 'frontUploaded'}
         onUpload={() => onUpload('frontUploaded')}
       />
+      <TextInput
+        style={[styles.input, styles.docUrlInput, { color: theme.text.primary, backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}
+        placeholder="Optional front ID image URL for Supabase row"
+        placeholderTextColor={theme.text.muted}
+        value={docRefs.front}
+        onChangeText={(v: string) => setDocRefs({ ...docRefs, front: v })}
+        autoCapitalize="none"
+      />
 
       {/* Back */}
       <UploadCard
@@ -202,6 +228,14 @@ function DocumentStep({ theme, selectedDocType, setSelectedDocType, profile, upl
         uploaded={docs.backUploaded}
         uploading={uploading === 'backUploaded'}
         onUpload={() => onUpload('backUploaded')}
+      />
+      <TextInput
+        style={[styles.input, styles.docUrlInput, { color: theme.text.primary, backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}
+        placeholder="Optional back ID image URL for Supabase row"
+        placeholderTextColor={theme.text.muted}
+        value={docRefs.back}
+        onChangeText={(v: string) => setDocRefs({ ...docRefs, back: v })}
+        autoCapitalize="none"
       />
     </Animated.View>
   );
@@ -233,7 +267,7 @@ function UploadCard({ title, subtitle, icon, theme, uploaded, uploading, onUploa
   );
 }
 
-function SelfieStep({ theme, profile, uploading, onUpload }: any) {
+function SelfieStep({ theme, profile, uploading, onUpload, docRefs, setDocRefs }: any) {
   const uploaded = profile.kycDocuments.selfieUploaded;
 
   return (
@@ -258,6 +292,15 @@ function SelfieStep({ theme, profile, uploading, onUpload }: any) {
         </Text>
       </TouchableOpacity>
 
+      <TextInput
+        style={[styles.input, styles.docUrlInput, { color: theme.text.primary, backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}
+        placeholder="Optional selfie image URL for Supabase row"
+        placeholderTextColor={theme.text.muted}
+        value={docRefs.selfie}
+        onChangeText={(v: string) => setDocRefs({ ...docRefs, selfie: v })}
+        autoCapitalize="none"
+      />
+
       <View style={[styles.tipCard, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
         <Text style={[styles.tipTitle, { color: theme.text.primary }]}>Tips for a good selfie</Text>
         {['Ensure good lighting -- avoid backlighting', 'Keep your face clearly visible', 'Hold your ID next to your face', 'Remove glasses or hats'].map((t) => (
@@ -271,7 +314,7 @@ function SelfieStep({ theme, profile, uploading, onUpload }: any) {
   );
 }
 
-function ReviewStep({ form, theme, selectedDocType, profile }: any) {
+function ReviewStep({ form, theme, selectedDocType, profile, docRefs }: any) {
   const docs = profile.kycDocuments;
 
   return (
@@ -301,6 +344,9 @@ function ReviewStep({ form, theme, selectedDocType, profile }: any) {
           ['Front Side', docs.frontUploaded ? 'Uploaded' : 'Missing'],
           ['Back Side', docs.backUploaded ? 'Uploaded' : 'Missing'],
           ['Selfie', docs.selfieUploaded ? 'Uploaded' : 'Missing'],
+          ['Front URL', docRefs.front || 'Not provided'],
+          ['Back URL', docRefs.back || 'Not provided'],
+          ['Selfie URL', docRefs.selfie || 'Not provided'],
         ].map(([label, value]) => {
           const isUploaded = value === 'Uploaded';
           return (
@@ -345,6 +391,7 @@ const styles = StyleSheet.create({
   field: { marginBottom: 16 },
   fieldLabel: { fontSize: 12, fontFamily: 'Inter-SemiBold', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
   input: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15, fontFamily: 'Inter-Regular', borderWidth: 1.5 },
+  docUrlInput: { marginBottom: 14, fontSize: 13 },
   docTypeRow: { flexDirection: 'row', gap: 8, marginBottom: 20, flexWrap: 'wrap' },
   docTypeBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, borderWidth: 1 },
   docTypeText: { fontSize: 13, fontFamily: 'Inter-Medium' },
@@ -371,6 +418,7 @@ const styles = StyleSheet.create({
   consentCard: { flexDirection: 'row', borderRadius: 14, padding: 14, borderWidth: 1, marginBottom: 8, gap: 10, alignItems: 'flex-start' },
   consentText: { fontSize: 12, fontFamily: 'Inter-Regular', lineHeight: 18, flex: 1 },
   actionArea: { paddingTop: 24 },
+  submitStatus: { fontSize: 12, fontFamily: 'Inter-Medium', textAlign: 'center', marginBottom: 10 },
   continueBtn: { borderRadius: 16, paddingVertical: 16, alignItems: 'center' },
   continueBtnText: { fontSize: 16, fontFamily: 'Inter-SemiBold', color: '#fff' },
 });

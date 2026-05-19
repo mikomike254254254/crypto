@@ -10,6 +10,7 @@ import {
   Image,
   Dimensions,
   Modal,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
@@ -23,10 +24,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowRight, Check, Shield, WalletCards } from 'lucide-react-native';
+import { ArrowRight, Check, Chrome, KeyRound, Mail, Shield, WalletCards } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
 import { CARTOON_AVATARS, POPULAR_MARKETS, WALLEX_BRAND } from '@/constants/brand';
+import { createRxpWalletAddress, shortWallet } from '@/lib/wallet';
+import { signInWithGoogle, signUpWithEmailPassword } from '@/lib/auth';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -37,9 +40,13 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(CARTOON_AVATARS[0].uri);
   const [focused, setFocused] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'signup' | null>(null);
+  const [authNotice, setAuthNotice] = useState('');
+  const [authBusy, setAuthBusy] = useState(false);
   const marquee = useSharedValue(0);
   const footerOpacity = useSharedValue(0.82);
 
@@ -59,17 +66,47 @@ export default function OnboardingScreen() {
   const canProceed = step === 0
     ? true
     : step === 1
-    ? name.trim().length > 0 && email.trim().length > 0 && email.includes('@')
+    ? name.trim().length > 0
+      && email.trim().length > 0
+      && email.includes('@')
+      && password.length >= 8
+      && password === confirmPassword
     : step === 2
     ? selectedAvatar !== null
     : true;
 
-  const handleNext = () => {
+  const previewWallet = createRxpWalletAddress(email || 'member@wallex.online', name || 'Wallex Member');
+
+  const handleNext = async () => {
     if (step === 2 && selectedAvatar) {
-      completeOnboarding(name.trim(), email.trim(), selectedAvatar);
+      const wallet = createRxpWalletAddress(email.trim(), name.trim());
+      await signUpWithEmailPassword({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        wallet,
+        avatarUri: selectedAvatar,
+      });
+      completeOnboarding(name.trim(), email.trim(), selectedAvatar, password, 'email');
       return;
     }
     if (step < 3) setStep(step + 1);
+  };
+
+  const openSupportEmail = () => {
+    Linking.openURL(`mailto:${WALLEX_BRAND.supportEmail}?subject=Wallex%20support`);
+  };
+
+  const handleGoogleSignup = async () => {
+    setAuthBusy(true);
+    setAuthNotice('');
+    const result = await signInWithGoogle();
+    setAuthBusy(false);
+    setAuthNotice(result.message ?? '');
+    if (result.mode === 'local') {
+      setAuthMode(null);
+      setStep(1);
+    }
   };
 
   const bgGradient = theme.isDark
@@ -177,7 +214,9 @@ export default function OnboardingScreen() {
                   <TouchableOpacity style={styles.finalButton} onPress={() => setAuthMode('signup')}>
                     <Text style={styles.finalButtonText}>Open Wallet - It's Free</Text>
                   </TouchableOpacity>
-                  <Text style={styles.finalSupport}>{WALLEX_BRAND.supportEmail}</Text>
+                  <TouchableOpacity onPress={openSupportEmail}>
+                    <Text style={styles.finalSupport}>{WALLEX_BRAND.supportEmail}</Text>
+                  </TouchableOpacity>
                 </View>
 
                 <Animated.View style={[styles.landingFooter, footerStyle]}>
@@ -185,9 +224,11 @@ export default function OnboardingScreen() {
                     <Image source={{ uri: WALLEX_BRAND.logoUrl }} style={styles.footerLogo} />
                     <Text style={styles.footerBrand}>wallex</Text>
                   </View>
-                  <Text style={styles.footerText}>
-                    (c) 2026 Wallex. All rights reserved. Support: {WALLEX_BRAND.supportEmail}
-                  </Text>
+                  <TouchableOpacity onPress={openSupportEmail}>
+                    <Text style={styles.footerText}>
+                      (c) 2026 Wallex. All rights reserved. Support: {WALLEX_BRAND.supportEmail}
+                    </Text>
+                  </TouchableOpacity>
                 </Animated.View>
               </Animated.View>
             )}
@@ -195,7 +236,7 @@ export default function OnboardingScreen() {
             {step === 1 && (
               <Animated.View entering={FadeInDown.duration(400)} style={styles.formContainer}>
                 <Text style={[styles.stepTitle, { color: theme.text.primary }]}>Create your Wallex profile</Text>
-                <Text style={[styles.stepSub, { color: theme.text.secondary }]}>This demo profile becomes your RXP wallet identity.</Text>
+                <Text style={[styles.stepSub, { color: theme.text.secondary }]}>Set your login, password, and internal RXP wallet identity.</Text>
 
                 <View style={styles.fieldGroup}>
                   <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Full Name</Text>
@@ -215,7 +256,7 @@ export default function OnboardingScreen() {
                 </View>
 
                 <View style={styles.fieldGroup}>
-                  <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Support Email Login</Text>
+                  <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Email Login</Text>
                   <TextInput
                     style={[
                       styles.input,
@@ -232,6 +273,58 @@ export default function OnboardingScreen() {
                     autoCorrect={false}
                   />
                 </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Password</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      { color: theme.text.primary, backgroundColor: theme.bg.card, borderColor: focused === 'password' ? theme.accent[500] : theme.bg.border },
+                    ]}
+                    placeholder="At least 8 characters"
+                    placeholderTextColor={theme.text.muted}
+                    value={password}
+                    onChangeText={setPassword}
+                    onFocus={() => setFocused('password')}
+                    onBlur={() => setFocused(null)}
+                    secureTextEntry
+                  />
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={[styles.fieldLabel, { color: theme.text.secondary }]}>Confirm Password</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      { color: theme.text.primary, backgroundColor: theme.bg.card, borderColor: focused === 'confirmPassword' ? theme.accent[500] : theme.bg.border },
+                    ]}
+                    placeholder="Repeat password"
+                    placeholderTextColor={theme.text.muted}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    onFocus={() => setFocused('confirmPassword')}
+                    onBlur={() => setFocused(null)}
+                    secureTextEntry
+                  />
+                </View>
+
+                <View style={[styles.walletPreview, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
+                  <View style={styles.walletPreviewHeader}>
+                    <WalletCards size={18} color={theme.accent[400]} />
+                    <Text style={[styles.walletPreviewTitle, { color: theme.text.primary }]}>Your RXP wallet address</Text>
+                  </View>
+                  <Text style={[styles.walletPreviewAddress, { color: theme.text.primary }]}>{shortWallet(previewWallet, 18, 7)}</Text>
+                  <Text style={[styles.walletPreviewBody, { color: theme.text.secondary }]}>
+                    New accounts start with zero external coins and receive a ${WALLEX_BRAND.signupBonusUsd} welcome bonus in RXP activity.
+                  </Text>
+                </View>
+
+                {password && password.length < 8 && (
+                  <Text style={[styles.validationText, { color: theme.error[400] }]}>Password must be at least 8 characters.</Text>
+                )}
+                {confirmPassword && password !== confirmPassword && (
+                  <Text style={[styles.validationText, { color: theme.error[400] }]}>Passwords do not match yet.</Text>
+                )}
               </Animated.View>
             )}
 
@@ -309,7 +402,7 @@ export default function OnboardingScreen() {
 
                 <TouchableOpacity
                   style={[styles.nextBtn, !canProceed && { opacity: 0.4 }]}
-                  onPress={handleNext}
+                  onPress={() => void handleNext()}
                   disabled={!canProceed}
                   activeOpacity={0.8}
                 >
@@ -359,6 +452,24 @@ export default function OnboardingScreen() {
             >
               <Text style={styles.authSubmitText}>{authMode === 'login' ? 'Log in' : 'Open Wallet'}</Text>
             </TouchableOpacity>
+            {authMode === 'signup' && (
+              <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup} disabled={authBusy}>
+                <Chrome size={16} color="#0f172a" />
+                <Text style={styles.googleButtonText}>{authBusy ? 'Opening Google...' : 'Continue with Google'}</Text>
+              </TouchableOpacity>
+            )}
+            {authMode === 'signup' && (
+              <View style={styles.authHint}>
+                <KeyRound size={14} color="#64748b" />
+                <Text style={styles.authHintText}>After Google signup you can set or change your password from security settings.</Text>
+              </View>
+            )}
+            {authNotice ? (
+              <View style={styles.authHint}>
+                <Mail size={14} color="#0284c7" />
+                <Text style={[styles.authHintText, { color: '#0284c7' }]}>{authNotice}</Text>
+              </View>
+            ) : null}
             <TouchableOpacity style={styles.authClose} onPress={() => setAuthMode(null)}>
               <Text style={styles.authCloseText}>Close</Text>
             </TouchableOpacity>
@@ -447,6 +558,12 @@ const styles = StyleSheet.create({
   fieldGroup: { marginBottom: 20 },
   fieldLabel: { fontSize: 12, fontFamily: 'Inter-SemiBold', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 },
   input: { borderRadius: 14, paddingHorizontal: 16, paddingVertical: 15, fontSize: 16, fontFamily: 'Inter-Regular', borderWidth: 1.5 },
+  walletPreview: { borderWidth: 1, borderRadius: 18, padding: 15, gap: 8, marginBottom: 12 },
+  walletPreviewHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  walletPreviewTitle: { fontSize: 14, fontFamily: 'Inter-SemiBold' },
+  walletPreviewAddress: { fontSize: 16, fontFamily: 'Inter-Bold', letterSpacing: 0.2 },
+  walletPreviewBody: { fontSize: 12, fontFamily: 'Inter-Regular', lineHeight: 18 },
+  validationText: { fontSize: 12, fontFamily: 'Inter-SemiBold', marginTop: -4, marginBottom: 10 },
   avatarContainer: { paddingBottom: 40 },
   selectedPreview: { alignItems: 'center', marginBottom: 24, gap: 8 },
   selectedAvatar: { width: 88, height: 88, borderRadius: 44, borderWidth: 3 },
@@ -474,6 +591,10 @@ const styles = StyleSheet.create({
   authInput: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 18, paddingHorizontal: 16, paddingVertical: 15, fontSize: 15, fontFamily: 'Inter-Regular', color: '#0f172a' },
   authSubmit: { backgroundColor: '#0f172a', borderRadius: 18, alignItems: 'center', paddingVertical: 15, marginTop: 4 },
   authSubmitText: { color: '#ffffff', fontSize: 15, fontFamily: 'Inter-SemiBold' },
+  googleButton: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 18, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, flexDirection: 'row', gap: 8, backgroundColor: '#ffffff' },
+  googleButtonText: { color: '#0f172a', fontSize: 14, fontFamily: 'Inter-SemiBold' },
+  authHint: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, backgroundColor: '#f8fafc', borderRadius: 14, padding: 11 },
+  authHintText: { flex: 1, color: '#64748b', fontSize: 12, fontFamily: 'Inter-Medium', lineHeight: 17 },
   authClose: { alignItems: 'center', paddingVertical: 4 },
   authCloseText: { color: '#64748b', fontSize: 13, fontFamily: 'Inter-SemiBold' },
 });

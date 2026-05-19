@@ -8,16 +8,17 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { Eye, EyeOff, ArrowUpRight, ArrowDownLeft, CreditCard, Copy } from 'lucide-react-native';
+import Animated, { Easing, FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { Eye, EyeOff, ArrowUpRight, ArrowDownLeft, CreditCard, Copy, ShieldCheck } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
 import { CRYPTO_ASSETS } from '@/constants/crypto';
 import CryptoRow from '@/components/CryptoRow';
 import { CARTOON_AVATARS, WALLEX_BRAND } from '@/constants/brand';
+import { shortWallet } from '@/lib/wallet';
 import OnboardingScreen from '../onboarding';
 
 const TOTAL_BALANCE = CRYPTO_ASSETS.reduce((sum, a) => sum + a.balance * a.price, 0);
@@ -30,26 +31,51 @@ export default function HomeScreen() {
   const [balanceHidden, setBalanceHidden] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [displayBalance, setDisplayBalance] = useState(0);
+  const liveMotion = useSharedValue(1);
 
   const primaryAsset = CRYPTO_ASSETS[0];
-  const shortAddress = `${profile.wallet.slice(0, 12)}...${profile.wallet.slice(-5)}`;
+  const shortAddress = shortWallet(profile.wallet, 16, 7);
+  const displayRatio = TOTAL_BALANCE > 0 ? Math.min(displayBalance / TOTAL_BALANCE, 1) : 1;
+  const displayRxp = primaryAsset.balance * displayRatio;
+
+  const animateCounters = useCallback(() => {
+    const startedAt = Date.now();
+    const duration = 1700;
+    setDisplayBalance(0);
+    const timer = setInterval(() => {
+      const progress = Math.min((Date.now() - startedAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayBalance(TOTAL_BALANCE * eased);
+      if (progress >= 1) clearInterval(timer);
+    }, 32);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const stop = animateCounters();
+    liveMotion.value = withRepeat(withTiming(1.045, { duration: 5000, easing: Easing.inOut(Easing.quad) }), -1, true);
+    return stop;
+  }, [animateCounters]);
+
+  const liveBgStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: liveMotion.value }],
+  }));
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    animateCounters();
     setTimeout(() => setRefreshing(false), 1500);
-  }, []);
+  }, [animateCounters]);
 
   const handleCopy = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const cardGradient = theme.isDark
-    ? ['#0a0a14', '#060610', '#000000'] as [string, string, string]
-    : ['#f2efe9', '#e8e4dc', '#ddd8cf'] as [string, string, string];
-
-  const glowColor1 = theme.isDark ? theme.accent[500] + '14' : theme.accent[500] + '0a';
-  const glowColor2 = theme.isDark ? theme.primary[600] + '18' : theme.primary[600] + '0a';
+  const cardGradient = ['#020617', '#0f172a', '#075985'] as [string, string, string];
+  const glowColor1 = theme.accent[500] + '2a';
+  const glowColor2 = theme.primary[600] + '26';
 
   if (!profile.isOnboarded) {
     return <OnboardingScreen />;
@@ -98,20 +124,22 @@ export default function HomeScreen() {
             end={{ x: 1, y: 1 }}
             style={[styles.balanceCard, { borderColor: theme.bg.border }]}
           >
+            <Animated.Image source={{ uri: WALLEX_BRAND.portfolioBackgroundUrl }} style={[styles.portfolioBg, liveBgStyle]} />
+            <View style={styles.portfolioOverlay} />
             <View style={[styles.glowCircle1, { backgroundColor: glowColor1 }]} />
             <View style={[styles.glowCircle2, { backgroundColor: glowColor2 }]} />
 
             <View style={styles.balanceTop}>
               <View>
-                <Text style={[styles.balanceLabel, { color: theme.text.secondary }]}>Total Portfolio</Text>
+                <Text style={styles.balanceLabel}>Total Portfolio</Text>
                 <View style={styles.balanceRow}>
-                  <Text style={[styles.balanceAmount, { color: theme.text.primary }]}>
-                    {balanceHidden ? '******' : `$${TOTAL_BALANCE.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  <Text style={styles.balanceAmount}>
+                    {balanceHidden ? '******' : `$${displayBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                   </Text>
                   <TouchableOpacity onPress={() => setBalanceHidden(!balanceHidden)} style={styles.eyeBtn}>
                     {balanceHidden
-                      ? <EyeOff size={18} color={theme.text.secondary} />
-                      : <Eye size={18} color={theme.text.secondary} />
+                      ? <EyeOff size={18} color="#dbeafe" />
+                      : <Eye size={18} color="#dbeafe" />
                     }
                   </TouchableOpacity>
                 </View>
@@ -125,18 +153,23 @@ export default function HomeScreen() {
               </View>
               <View style={styles.xrpBadge}>
                 <Image source={{ uri: primaryAsset.icon }} style={styles.xrpIcon} />
-                <Text style={[styles.xrpLabel, { color: theme.accent[300] }]}>{primaryAsset.symbol}</Text>
+                <Text style={styles.xrpLabel}>{primaryAsset.symbol}</Text>
               </View>
             </View>
 
-            <View style={[styles.addressRow, { backgroundColor: theme.isDark ? '#ffffff0a' : '#00000008' }]}>
-              <Text style={[styles.addressText, { color: theme.text.secondary }]}>{shortAddress}</Text>
+            <View style={styles.addressRow}>
+              <Text style={styles.addressText}>{shortAddress}</Text>
               <TouchableOpacity onPress={handleCopy} style={styles.copyBtn}>
-                <Copy size={13} color={copied ? theme.accent[400] : theme.text.secondary} />
-                <Text style={[styles.copyText, copied && { color: theme.accent[400] }, { color: copied ? theme.accent[400] : theme.text.secondary }]}>
+                <Copy size={13} color={copied ? '#67e8f9' : '#dbeafe'} />
+                <Text style={[styles.copyText, { color: copied ? '#67e8f9' : '#dbeafe' }]}>
                   {copied ? 'Copied!' : 'Copy'}
                 </Text>
               </TouchableOpacity>
+            </View>
+
+            <View style={styles.walletInfoRow}>
+              <ShieldCheck size={15} color="#67e8f9" />
+              <Text style={styles.walletInfoText}>Internal RXP wallet ID. Use this for Wallex-to-Wallex transfers.</Text>
             </View>
 
             <View style={styles.actionRow}>
@@ -179,10 +212,10 @@ export default function HomeScreen() {
           <View style={styles.spotlightLeft}>
             <Text style={[styles.spotlightLabel, { color: theme.text.muted }]}>RXP Balance</Text>
             <Text style={[styles.spotlightAmount, { color: theme.text.primary }]}>
-              {balanceHidden ? '******' : `${primaryAsset.balance.toLocaleString('en-US', { maximumFractionDigits: 2 })} RXP`}
+              {balanceHidden ? '******' : `${displayRxp.toLocaleString('en-US', { maximumFractionDigits: 2 })} RXP`}
             </Text>
             <Text style={[styles.spotlightUsd, { color: theme.text.secondary }]}>
-              {balanceHidden ? '***' : `~ $${(primaryAsset.balance * primaryAsset.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              {balanceHidden ? '***' : `~ $${(displayRxp * primaryAsset.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             </Text>
           </View>
           <View style={styles.spotlightRight}>
@@ -229,23 +262,27 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 18, fontFamily: 'Inter-SemiBold' },
   greetingSub: { fontSize: 13, fontFamily: 'Inter-Regular', marginTop: 2 },
   balanceCard: { borderRadius: 24, padding: 22, marginBottom: 12, overflow: 'hidden', borderWidth: 1 },
+  portfolioBg: { position: 'absolute', top: -10, left: -10, right: -10, bottom: -10, opacity: 0.42 },
+  portfolioOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: '#020617b8' },
   glowCircle1: { position: 'absolute', width: 200, height: 200, borderRadius: 100, top: -60, right: -40 },
   glowCircle2: { position: 'absolute', width: 150, height: 150, borderRadius: 75, bottom: -50, left: -20 },
   balanceTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  balanceLabel: { fontSize: 12, fontFamily: 'Inter-Regular', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
+  balanceLabel: { fontSize: 12, fontFamily: 'Inter-Regular', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, color: '#bfdbfe' },
   balanceRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  balanceAmount: { fontSize: 32, fontFamily: 'Inter-Bold', letterSpacing: -0.5 },
+  balanceAmount: { fontSize: 32, fontFamily: 'Inter-Bold', letterSpacing: 0, color: '#ffffff' },
   eyeBtn: { padding: 4 },
   changeRow: { marginTop: 8 },
   changePill: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   changeLabel: { fontSize: 12, fontFamily: 'Inter-SemiBold' },
   xrpBadge: { alignItems: 'center', gap: 4 },
   xrpIcon: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: '#1ed4d444' },
-  xrpLabel: { fontSize: 11, fontFamily: 'Inter-SemiBold', letterSpacing: 1 },
-  addressRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
-  addressText: { flex: 1, fontSize: 12, fontFamily: 'Inter-Regular', letterSpacing: 0.5 },
+  xrpLabel: { fontSize: 11, fontFamily: 'Inter-SemiBold', letterSpacing: 1, color: '#67e8f9' },
+  addressRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, backgroundColor: '#ffffff18' },
+  addressText: { flex: 1, fontSize: 12, fontFamily: 'Inter-Regular', letterSpacing: 0.5, color: '#dbeafe' },
   copyBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   copyText: { fontSize: 12, fontFamily: 'Inter-Medium' },
+  walletInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 20 },
+  walletInfoText: { flex: 1, color: '#dbeafe', fontSize: 11, fontFamily: 'Inter-Medium', lineHeight: 16 },
   actionRow: { flexDirection: 'row', gap: 16 },
   actionBtn: { alignItems: 'center', gap: 8 },
   actionGradient: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },

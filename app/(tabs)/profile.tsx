@@ -29,9 +29,8 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export default function ProfileScreen() {
   const router = useRouter();
   const { theme, isDark, toggleTheme, darkThemeKey, setDarkTheme, availableDarkThemes } = useTheme();
-  const { profile, setProfile } = useUser();
+  const { profile, setProfile, setSecurity } = useUser();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [biometricEnabled, setBiometricEnabled] = useState(false);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [customAvatarUrl, setCustomAvatarUrl] = useState('');
 
@@ -46,6 +45,15 @@ export default function ProfileScreen() {
   const kycColor = theme[kyc.colorKey];
 
   const avatarUri = profile.avatarUri ?? CARTOON_AVATARS[0].uri;
+  const openSupportEmail = async () => {
+    const mailto = `mailto:${WALLEX_BRAND.supportEmail}?subject=Wallex%20support`;
+    const canOpen = await Linking.canOpenURL(mailto);
+    if (canOpen) {
+      Linking.openURL(mailto);
+      return;
+    }
+    Linking.openURL(`https://mail.google.com/mail/?view=cm&fs=1&to=${WALLEX_BRAND.supportEmail}`);
+  };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg.primary }]} edges={['top']}>
@@ -196,14 +204,24 @@ export default function ProfileScreen() {
         {/* ── Security ── */}
         <Text style={[styles.sectionLabel, { color: theme.text.muted }]}>Security</Text>
         <View style={[styles.menuGroup, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
-          <MenuRow icon={<Lock size={18} color={theme.primary[400]} />} iconBg={theme.primary[500] + '22'} label="Change PIN" theme={theme} onPress={() => {}} />
+          <MenuRow icon={<Lock size={18} color={theme.primary[400]} />} iconBg={theme.primary[500] + '22'} label={profile.security.pinEnabled ? 'Wallet PIN Enabled' : 'Set Wallet PIN'} theme={theme} onPress={() => setSecurity({ pinEnabled: !profile.security.pinEnabled })} />
           <View style={[styles.divider, { backgroundColor: theme.bg.border }]} />
-          <MenuRow icon={<Shield size={18} color={theme.success[400]} />} iconBg={theme.success[500] + '22'} label="Two-Factor Auth" theme={theme} onPress={() => {}} />
+          <View style={styles.menuRow}>
+            <View style={[styles.menuIconWrap, { backgroundColor: theme.success[500] + '22' }]}><Shield size={18} color={theme.success[400]} /></View>
+            <View style={styles.themeInfo}>
+              <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Two-Factor Auth</Text>
+              <Text style={[styles.themeSub, { color: theme.text.secondary }]}>{profile.security.twoFactorEnabled ? 'Enabled for wallet actions' : 'Tap to protect wallet actions'}</Text>
+            </View>
+            <Switch value={profile.security.twoFactorEnabled} onValueChange={(value) => setSecurity({ twoFactorEnabled: value })} trackColor={{ false: theme.bg.border, true: theme.accent[600] }} thumbColor={profile.security.twoFactorEnabled ? theme.accent[400] : theme.text.muted} />
+          </View>
           <View style={[styles.divider, { backgroundColor: theme.bg.border }]} />
           <View style={styles.menuRow}>
             <View style={[styles.menuIconWrap, { backgroundColor: theme.warning[500] + '22' }]}><User size={18} color={theme.warning[400]} /></View>
-            <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Biometric Login</Text>
-            <Switch value={biometricEnabled} onValueChange={setBiometricEnabled} trackColor={{ false: theme.bg.border, true: theme.accent[600] }} thumbColor={biometricEnabled ? theme.accent[400] : theme.text.muted} />
+            <View style={styles.themeInfo}>
+              <Text style={[styles.menuLabel, { color: theme.text.primary }]}>Biometric Login</Text>
+              <Text style={[styles.themeSub, { color: theme.text.secondary }]}>{profile.security.biometricEnabled ? 'Enabled on this device' : 'Local device setting'}</Text>
+            </View>
+            <Switch value={profile.security.biometricEnabled} onValueChange={(value) => setSecurity({ biometricEnabled: value })} trackColor={{ false: theme.bg.border, true: theme.accent[600] }} thumbColor={profile.security.biometricEnabled ? theme.accent[400] : theme.text.muted} />
           </View>
         </View>
 
@@ -222,7 +240,7 @@ export default function ProfileScreen() {
         {/* ── Support ── */}
         <Text style={[styles.sectionLabel, { color: theme.text.muted }]}>Support</Text>
         <View style={[styles.menuGroup, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
-          <MenuRow icon={<HelpCircle size={18} color={theme.primary[400]} />} iconBg={theme.primary[500] + '22'} label={`Email ${WALLEX_BRAND.supportEmail}`} theme={theme} onPress={() => Linking.openURL(`mailto:${WALLEX_BRAND.supportEmail}`)} />
+          <MenuRow icon={<HelpCircle size={18} color={theme.primary[400]} />} iconBg={theme.primary[500] + '22'} label={`Email ${WALLEX_BRAND.supportEmail}`} theme={theme} onPress={openSupportEmail} />
           <View style={[styles.divider, { backgroundColor: theme.bg.border }]} />
           <MenuRow icon={<FileText size={18} color={theme.text.secondary} />} iconBg={theme.bg.border} label="Terms & Privacy" theme={theme} onPress={() => {}} />
         </View>

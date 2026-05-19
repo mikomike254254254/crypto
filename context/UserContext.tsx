@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { ImageSourcePropType } from 'react-native';
 import { CARTOON_AVATARS } from '@/constants/brand';
+import { createRxpWalletAddress } from '@/lib/wallet';
 
 export interface UserProfile {
   name: string;
@@ -8,6 +9,8 @@ export interface UserProfile {
   wallet: string;
   avatar: ImageSourcePropType | null;
   avatarUri: string | null;
+  authProvider: 'email' | 'google' | 'local';
+  passwordSet: boolean;
   kycStatus: 'unverified' | 'pending' | 'verified' | 'rejected';
   kycSubmittedAt: Date | null;
   kycDocuments: {
@@ -25,15 +28,22 @@ export interface UserProfile {
     city: string;
     zip: string;
   };
+  security: {
+    pinEnabled: boolean;
+    twoFactorEnabled: boolean;
+    biometricEnabled: boolean;
+  };
   isOnboarded: boolean;
 }
 
 const DEFAULT_PROFILE: UserProfile = {
   name: '',
   email: '',
-  wallet: 'wallex-demo-wallet',
+  wallet: 'rxp_demo_wallet',
   avatar: null,
   avatarUri: CARTOON_AVATARS[0].uri,
+  authProvider: 'local',
+  passwordSet: false,
   kycStatus: 'unverified',
   kycSubmittedAt: null,
   kycDocuments: {
@@ -51,23 +61,30 @@ const DEFAULT_PROFILE: UserProfile = {
     city: '',
     zip: '',
   },
+  security: {
+    pinEnabled: false,
+    twoFactorEnabled: false,
+    biometricEnabled: false,
+  },
   isOnboarded: false,
 };
 
 interface UserContextType {
   profile: UserProfile;
   setProfile: (updates: Partial<UserProfile>) => void;
-  completeOnboarding: (name: string, email: string, avatarUri: string | null) => void;
+  completeOnboarding: (name: string, email: string, avatarUri: string | null, password?: string, provider?: UserProfile['authProvider']) => string;
   submitKyc: (personalInfo: UserProfile['personalInfo'], idType: string) => void;
   uploadDocument: (doc: 'frontUploaded' | 'backUploaded' | 'selfieUploaded') => void;
+  setSecurity: (updates: Partial<UserProfile['security']>) => void;
 }
 
 const UserContext = createContext<UserContextType>({
   profile: DEFAULT_PROFILE,
   setProfile: () => {},
-  completeOnboarding: () => {},
+  completeOnboarding: () => DEFAULT_PROFILE.wallet,
   submitKyc: () => {},
   uploadDocument: () => {},
+  setSecurity: () => {},
 });
 
 export function UserProvider({ children }: { children: ReactNode }) {
@@ -77,21 +94,27 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setProfileState((prev) => ({ ...prev, ...updates }));
   };
 
-  const completeOnboarding = (name: string, email: string, avatarUri: string | null) => {
-    const walletSlug = email
-      .split('@')[0]
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '')
-      .slice(0, 18) || 'member';
+  const completeOnboarding = (
+    name: string,
+    email: string,
+    avatarUri: string | null,
+    password?: string,
+    provider: UserProfile['authProvider'] = 'email',
+  ) => {
+    const wallet = createRxpWalletAddress(email, name);
 
     setProfileState((prev) => ({
       ...prev,
       name,
       email,
-      wallet: `wallex-${walletSlug}`,
+      wallet,
       avatarUri,
+      authProvider: provider,
+      passwordSet: Boolean(password && password.length >= 8),
       isOnboarded: true,
     }));
+
+    return wallet;
   };
 
   const submitKyc = (personalInfo: UserProfile['personalInfo'], idType: string) => {
@@ -117,8 +140,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const setSecurity = (updates: Partial<UserProfile['security']>) => {
+    setProfileState((prev) => ({
+      ...prev,
+      security: {
+        ...prev.security,
+        ...updates,
+      },
+    }));
+  };
+
   return (
-    <UserContext.Provider value={{ profile, setProfile, completeOnboarding, submitKyc, uploadDocument }}>
+    <UserContext.Provider value={{ profile, setProfile, completeOnboarding, submitKyc, uploadDocument, setSecurity }}>
       {children}
     </UserContext.Provider>
   );

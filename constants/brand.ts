@@ -1,12 +1,20 @@
+export const RXP_USD_PRICE = 1.39;
+export const SIGNUP_BONUS_USD = 15;
+export const SIGNUP_BONUS_RXP = Number((SIGNUP_BONUS_USD / RXP_USD_PRICE).toFixed(2));
+
 export const WALLEX_BRAND = {
   name: 'Wallex',
   siteName: 'wallex.online',
   domain: 'https://wallex.online',
+  websiteUrl: 'https://wallex.online',
   supportEmail: 'wallexcrypto@proton.me',
   logoUrl: 'https://i.postimg.cc/C5xPhJz5/wallex-logo.jpg',
   heroImageUrl: 'https://i.postimg.cc/PJvDQ87K/dc2a020fb68e8bd16b808612feaf0954.jpg',
+  portfolioBackgroundUrl: 'https://i.postimg.cc/g0Ng0J7b/b41640c9e405eb79941055db517017a0.jpg',
   rxpRateKes: 180,
-  rxpUsdPrice: 1.39,
+  rxpUsdPrice: RXP_USD_PRICE,
+  signupBonusUsd: SIGNUP_BONUS_USD,
+  signupBonusRxp: SIGNUP_BONUS_RXP,
 };
 
 export const CARTOON_AVATARS = [

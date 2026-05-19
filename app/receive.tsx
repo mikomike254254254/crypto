@@ -12,12 +12,14 @@ import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ArrowLeft, Copy, Share2, ChevronDown, Check } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { useUser } from '@/context/UserContext';
 import { CryptoColors } from '@/constants/colors';
 import { CRYPTO_ASSETS } from '@/constants/crypto';
 
 export default function ReceiveScreen() {
   const router = useRouter();
   const { theme } = useTheme();
+  const { profile } = useUser();
   const [selectedAsset, setSelectedAsset] = useState(CRYPTO_ASSETS[0]);
   const [copied, setCopied] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -29,6 +31,10 @@ export default function ReceiveScreen() {
 
   const qrBg = theme.isDark ? '#000000' : '#ffffff';
   const qrCellColor = theme.isDark ? theme.bg.primary : '#1f1b16';
+  const receiveAddress = selectedAsset.id === 'rxp' ? profile.wallet : selectedAsset.address;
+  const receiveNote = selectedAsset.id === 'rxp'
+    ? 'RXP is an internal Wallex wallet balance. Share this rxp_ address with another Wallex user.'
+    : `Only send ${selectedAsset.symbol} to this address.`;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg.primary }]} edges={['top']}>
@@ -104,7 +110,7 @@ export default function ReceiveScreen() {
           <Text style={[styles.label, { color: theme.text.secondary }]}>Your {selectedAsset.symbol} Address</Text>
           <View style={[styles.addressCard, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
             <Text style={[styles.addressText, { color: theme.text.primary }]} selectable>
-              {selectedAsset.address}
+              {receiveAddress}
             </Text>
           </View>
 
@@ -128,7 +134,7 @@ export default function ReceiveScreen() {
         <Animated.View entering={FadeInDown.delay(200).duration(400)} style={[styles.warningCard, { backgroundColor: theme.warning[900] + '33', borderColor: theme.warning[700] + '44' }]}>
           <Text style={[styles.warningTitle, { color: theme.warning[400] }]}>Important</Text>
           <Text style={[styles.warningText, { color: theme.text.secondary }]}>
-            This address supports {selectedAsset.name} ({selectedAsset.symbol}) only. Make sure the sender uses the correct network to avoid loss of funds.
+            {receiveNote} Make sure the sender uses the correct network or internal Wallex transfer flow to avoid loss of funds.
           </Text>
         </Animated.View>
 

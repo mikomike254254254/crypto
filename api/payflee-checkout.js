@@ -16,6 +16,7 @@ module.exports = async function handler(req, res) {
 
   const amountKes = Math.round(units * 180);
   const reference = `WLX-${Date.now()}`;
+  const origin = req.headers.origin || process.env.PUBLIC_SITE_URL || 'https://wallex.online';
   const hostedLink = process.env.PAYFLEE_PAYMENT_LINK_URL;
 
   if (hostedLink) {
@@ -23,6 +24,7 @@ module.exports = async function handler(req, res) {
     url.searchParams.set('amount', String(amountKes));
     url.searchParams.set('currency', 'KES');
     url.searchParams.set('reference', reference);
+    url.searchParams.set('return_url', `${origin}/buy`);
     if (email) url.searchParams.set('email', email);
     if (wallet) url.searchParams.set('wallet', wallet);
     return send(res, 200, { checkoutUrl: url.toString(), amountKes, reference });
@@ -44,6 +46,12 @@ module.exports = async function handler(req, res) {
         reference,
         description: `${units} RXP on Wallex`,
         customer: { email, wallet },
+        return_url: `${origin}/buy`,
+        metadata: {
+          wallet,
+          rxp_amount: units,
+          product: 'Wallex RXP',
+        },
       }),
     });
 
@@ -53,6 +61,7 @@ module.exports = async function handler(req, res) {
       checkoutUrl: data.checkout_url || data.url || data.payment_url,
       amountKes,
       reference,
+      paymentPublicKeyConfigured: Boolean(process.env.PAYFLEE_PUBLIC_KEY),
       raw: data,
     });
   }

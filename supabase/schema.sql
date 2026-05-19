@@ -2,16 +2,18 @@ create extension if not exists pgcrypto;
 
 create table if not exists public.users (
   id uuid primary key default gen_random_uuid(),
-  wallet text unique not null,
+  auth_user_id uuid unique references auth.users(id) on delete cascade,
+  wallet text unique not null check (wallet ~ '^rxp_[a-z0-9]{3,18}_[a-z0-9]{7}$'),
   email text,
   full_name text,
   avatar_url text,
-  kyc_status text default 'pending' check (kyc_status in ('pending', 'approved', 'rejected', 'unverified')),
+  kyc_status text default 'unverified' check (kyc_status in ('pending', 'approved', 'rejected', 'unverified')),
+  signup_bonus_awarded boolean default false,
   created_at timestamptz default now()
 );
 
 create table if not exists public.balances (
-  wallet text primary key,
+  wallet text primary key references public.users(wallet) on delete cascade,
   amount numeric not null default 0 check (amount >= 0),
   updated_at timestamptz default now()
 );
@@ -20,11 +22,27 @@ create table if not exists public.transactions (
   id uuid primary key default gen_random_uuid(),
   from_wallet text,
   to_wallet text not null,
-  amount numeric not null check (amount > 0),
+  amount numeric not null check (amount >= 0),
   token text default 'RXP',
   type text default 'transfer',
   status text default 'completed',
   note text,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.kyc_submissions (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid references auth.users(id) on delete cascade,
+  wallet text not null references public.users(wallet) on delete cascade,
+  email text,
+  full_name text,
+  id_type text,
+  personal_info jsonb default '{}'::jsonb,
+  front_document_url text,
+  back_document_url text,
+  selfie_document_url text,
+  status text default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  reviewed_at timestamptz,
   created_at timestamptz default now()
 );
 
@@ -44,7 +62,7 @@ create table if not exists public.notifications (
 
 create table if not exists public.mpesa_withdraws (
   id uuid primary key default gen_random_uuid(),
-  wallet text not null,
+  wallet text not null references public.users(wallet) on delete cascade,
   phone text not null,
   amount_kes numeric not null check (amount_kes > 0),
   status text default 'pending',
@@ -73,37 +91,142 @@ begin
 
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 drop trigger if exists trigger_balance_update on public.transactions;
 create trigger trigger_balance_update
 after insert on public.transactions
 for each row execute function public.update_balance_on_tx();
 
+create or replace function public.award_signup_bonus()
+returns trigger as $$
+begin
+  insert into public.balances (wallet, amount)
+  values (new.wallet, 0)
+  on conflict (wallet) do nothing;
+
+  if new.signup_bonus_awarded is false then
+    insert into public.transactions (from_wallet, to_wallet, amount, token, type, status, note)
+    values ('system', new.wallet, 10.79, 'RXP', 'signup_bonus', 'completed', '$15 Wallex signup bonus');
+
+    update public.users
+    set signup_bonus_awarded = true
+    where id = new.id;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists trigger_award_signup_bonus on public.users;
+create trigger trigger_award_signup_bonus
+after insert on public.users
+for each row execute function public.award_signup_bonus();
+
+create or replace function public.handle_new_auth_user()
+returns trigger as $$
+declare
+  wallet_from_meta text;
+begin
+  wallet_from_meta := coalesce(
+    new.raw_user_meta_data->>'wallet',
+    'rxp_' || left(regexp_replace(coalesce(split_part(new.email, '@', 1), 'member'), '[^a-zA-Z0-9]', '', 'g'), 16) || '_' || left(replace(new.id::text, '-', ''), 7)
+  );
+
+  insert into public.users (auth_user_id, wallet, email, full_name, avatar_url, kyc_status)
+  values (
+    new.id,
+    lower(wallet_from_meta),
+    new.email,
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'avatar_url',
+    'unverified'
+  )
+  on conflict (auth_user_id) do update set
+    email = excluded.email,
+    full_name = coalesce(excluded.full_name, public.users.full_name),
+    avatar_url = coalesce(excluded.avatar_url, public.users.avatar_url);
+
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_auth_user();
+
 alter table public.users enable row level security;
 alter table public.balances enable row level security;
 alter table public.transactions enable row level security;
+alter table public.kyc_submissions enable row level security;
 alter table public.notifications enable row level security;
 alter table public.mpesa_withdraws enable row level security;
 alter table public.banned_wallets enable row level security;
 
+drop policy if exists "read own user profile" on public.users;
 create policy "read own user profile" on public.users
-  for select using (auth.uid()::text = wallet);
+  for select using (auth.uid() = auth_user_id);
 
-create policy "insert own user profile" on public.users
-  for insert with check (auth.uid()::text = wallet);
+drop policy if exists "update own user profile" on public.users;
+create policy "update own user profile" on public.users
+  for update using (auth.uid() = auth_user_id)
+  with check (auth.uid() = auth_user_id);
 
+drop policy if exists "read own balance" on public.balances;
 create policy "read own balance" on public.balances
-  for select using (auth.uid()::text = wallet);
+  for select using (exists (
+    select 1 from public.users u
+    where u.wallet = balances.wallet and u.auth_user_id = auth.uid()
+  ));
 
+drop policy if exists "read own transactions" on public.transactions;
 create policy "read own transactions" on public.transactions
-  for select using (auth.uid()::text = from_wallet or auth.uid()::text = to_wallet);
+  for select using (exists (
+    select 1 from public.users u
+    where u.auth_user_id = auth.uid()
+      and (u.wallet = transactions.from_wallet or u.wallet = transactions.to_wallet)
+  ));
 
+drop policy if exists "create own transfers" on public.transactions;
 create policy "create own transfers" on public.transactions
-  for insert with check (auth.uid()::text = from_wallet and type = 'transfer');
+  for insert with check (exists (
+    select 1 from public.users u
+    where u.auth_user_id = auth.uid()
+      and u.wallet = transactions.from_wallet
+      and transactions.type = 'transfer'
+  ));
 
+drop policy if exists "read own kyc submissions" on public.kyc_submissions;
+create policy "read own kyc submissions" on public.kyc_submissions
+  for select using (auth.uid() = auth_user_id);
+
+drop policy if exists "create own kyc submissions" on public.kyc_submissions;
+create policy "create own kyc submissions" on public.kyc_submissions
+  for insert with check (auth.uid() = auth_user_id);
+
+drop policy if exists "read own notifications" on public.notifications;
 create policy "read own notifications" on public.notifications
-  for select using (user_id is null or auth.uid()::text = user_id);
+  for select using (
+    user_id is null or exists (
+      select 1 from public.users u
+      where u.auth_user_id = auth.uid() and u.wallet = notifications.user_id
+    )
+  );
 
+drop policy if exists "create own mpesa withdraw request" on public.mpesa_withdraws;
 create policy "create own mpesa withdraw request" on public.mpesa_withdraws
-  for insert with check (auth.uid()::text = wallet);
+  for insert with check (exists (
+    select 1 from public.users u
+    where u.auth_user_id = auth.uid() and u.wallet = mpesa_withdraws.wallet
+  ));
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'kyc-documents',
+  'kyc-documents',
+  false,
+  10485760,
+  array['image/jpeg', 'image/png', 'application/pdf']
+)
+on conflict (id) do nothing;

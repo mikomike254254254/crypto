@@ -5,9 +5,11 @@ const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 const enableWalletSync = process.env.EXPO_PUBLIC_ENABLE_SUPABASE_SYNC === 'true';
 
-export const isSupabaseConfigured = Boolean(enableWalletSync && supabaseUrl && supabaseAnonKey);
+export const isSupabaseClientConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+export const isWalletSyncEnabled = Boolean(enableWalletSync && isSupabaseClientConfigured);
+export const isSupabaseConfigured = isWalletSyncEnabled;
 
-export const supabase = isSupabaseConfigured
+export const supabase = isSupabaseClientConfigured
   ? createClient(supabaseUrl as string, supabaseAnonKey as string)
   : null;
 
@@ -18,7 +20,7 @@ export async function recordWalletTransfer(params: {
   token?: string;
   note?: string;
 }) {
-  if (!supabase) {
+  if (!supabase || !isWalletSyncEnabled) {
     return { ok: true, demo: true, error: null };
   }
 
@@ -36,7 +38,7 @@ export async function recordWalletTransfer(params: {
 }
 
 export async function loadWalletBalance(wallet: string) {
-  if (!supabase) return null;
+  if (!supabase || !isWalletSyncEnabled) return null;
 
   const { data, error } = await supabase
     .from('balances')

@@ -32,16 +32,29 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const [{ count: userCount }, { count: pendingKyc }, { data: transactions }] = await Promise.all([
+      const [
+        { count: userCount },
+        { count: pendingKyc },
+        { count: banCount },
+        { data: transactions },
+        { data: kycSubmissions },
+        { data: awardRows },
+      ] = await Promise.all([
         supabase.from('users').select('*', { count: 'exact', head: true }),
-        supabase.from('users').select('*', { count: 'exact', head: true }).eq('kyc_status', 'pending'),
-        supabase.from('transactions').select('*').order('created_at', { ascending: false }).limit(12),
+        supabase.from('kyc_submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+        supabase.from('banned_wallets').select('*', { count: 'exact', head: true }),
+        supabase.from('transactions').select('*').order('created_at', { ascending: false }).limit(16),
+        supabase.from('kyc_submissions').select('*').order('created_at', { ascending: false }).limit(8),
+        supabase.from('transactions').select('amount').eq('token', 'RXP').in('type', ['award', 'signup_bonus']),
       ]);
 
       return send(res, 200, {
         userCount: userCount ?? 0,
         pendingKyc: pendingKyc ?? 0,
+        banCount: banCount ?? 0,
+        rxpAwarded: (awardRows ?? []).reduce((sum, row) => sum + Number(row.amount || 0), 0),
         transactions: transactions ?? [],
+        kycSubmissions: kycSubmissions ?? [],
       });
     }
 
@@ -65,11 +78,19 @@ module.exports = async function handler(req, res) {
 
     if (action === 'approveKyc') {
       if (!wallet) return send(res, 400, { error: 'Wallet is required' });
-      const { error } = await supabase
-        .from('users')
-        .update({ kyc_status: status === 'rejected' ? 'rejected' : 'approved' })
-        .eq('wallet', wallet);
-      if (error) throw error;
+      const nextStatus = status === 'rejected' ? 'rejected' : 'approved';
+      const [{ error: userError }, { error: submissionError }] = await Promise.all([
+        supabase
+          .from('users')
+          .update({ kyc_status: nextStatus })
+          .eq('wallet', wallet),
+        supabase
+          .from('kyc_submissions')
+          .update({ status: nextStatus, reviewed_at: new Date().toISOString() })
+          .eq('wallet', wallet)
+          .eq('status', 'pending'),
+      ]);
+      if (userError || submissionError) throw userError || submissionError;
       return send(res, 200, { ok: true });
     }
 
