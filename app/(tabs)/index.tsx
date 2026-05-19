@@ -8,12 +8,14 @@ import {
   RefreshControl,
   Modal,
   TextInput,
+  Clipboard,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import Animated, { Easing, FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { Eye, EyeOff, ArrowUpRight, ArrowDownLeft, CreditCard, Copy, ShieldCheck, Smartphone, Banknote, CheckCircle, CircleAlert, X } from 'lucide-react-native';
+import { Eye, EyeOff, ArrowUpRight, ArrowDownLeft, CreditCard, Copy, ShieldCheck, Smartphone, Banknote, CheckCircle, CircleAlert, X, Phone } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
@@ -83,6 +85,7 @@ export default function HomeScreen() {
   }, [animateCounters]);
 
   const handleCopy = () => {
+    Clipboard.setString(profile.wallet);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -328,7 +331,7 @@ export default function HomeScreen() {
           <View style={[styles.mpesaModal, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleRow}>
-                <Banknote size={22} color={theme.accent[400]} />
+                <Phone size={22} color={theme.accent[400]} />
                 <Text style={[styles.modalTitle, { color: theme.text.primary }]}>M-Pesa Withdrawal</Text>
               </View>
               <TouchableOpacity onPress={() => setMpesaVisible(false)} style={[styles.modalClose, { backgroundColor: theme.bg.border }]}>

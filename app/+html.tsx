@@ -19,6 +19,16 @@ export default function Root({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <ScrollViewStyleReset />
+        <style dangerouslySetInnerHTML={{ __html: `
+          html, body, #root {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8fafc;
+          }
+          * { box-sizing: border-box; }
+        ` }} />
         <title>Wallex.online | Secure Crypto Wallet for Africa, Asia, Europe and the USA</title>
         <meta
           name="description"

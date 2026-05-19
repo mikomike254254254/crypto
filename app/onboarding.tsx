@@ -30,7 +30,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
 import { CARTOON_AVATARS, WALLEX_BRAND } from '@/constants/brand';
 import { createRippleWalletAddress, shortWallet } from '@/lib/wallet';
-import { signInWithGoogle, signUpWithEmailPassword } from '@/lib/auth';
+import { signInWithGoogle, signUpWithEmailPassword, signInWithEmailPassword } from '@/lib/auth';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -84,7 +84,7 @@ export default function OnboardingScreen() {
 
   const previewWallet = createRippleWalletAddress(email || 'member@wallex.online', name || 'Wallex Member');
 
-  const handleAuthSubmit = () => {
+  const handleAuthSubmit = async () => {
     setAuthNotice('');
 
     if (authMode === 'signup') {
@@ -92,14 +92,32 @@ export default function OnboardingScreen() {
         setAuthNotice('Enter your name, email, and matching password with at least 8 characters.');
         return;
       }
-
       setAuthMode(null);
       setStep(2);
       return;
     }
 
-    setAuthMode(null);
-    setStep(1);
+    // LOGIN flow — call Supabase auth
+    if (authMode === 'login') {
+      if (!email.trim() || !password) {
+        setAuthNotice('Enter your email and password.');
+        return;
+      }
+      setAuthBusy(true);
+      const result = await signInWithEmailPassword(email.trim(), password);
+      setAuthBusy(false);
+      if (!result.ok) {
+        setAuthNotice(result.message ?? 'Login failed. Check your email and password.');
+        return;
+      }
+      // Populate profile from Supabase user metadata
+      const meta = result.user?.user_metadata ?? {};
+      const userName = meta.full_name ?? email.split('@')[0];
+      const avatarUri = meta.avatar_url ?? CARTOON_AVATARS[0].uri;
+      completeOnboarding(userName, email.trim(), avatarUri, password, 'email');
+      setAuthMode(null);
+      return;
+    }
   };
 
   const handleNext = async () => {
@@ -145,31 +163,31 @@ export default function OnboardingScreen() {
       <LinearGradient colors={bgGradient} style={styles.gradient}>
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            {step === 0 && (
-              <Animated.View entering={FadeInDown.duration(500)} style={styles.landing}>
-                <View style={[styles.topNav, { backgroundColor: '#ffffffdd', borderColor: '#e2e8f0' }]}>
-                  <View style={styles.brandRow}>
-                    <Animated.Image source={{ uri: WALLEX_BRAND.logoUrl }} style={[styles.brandLogo, logoSpinStyle]} />
-                    <Text style={styles.brandName}>wallex</Text>
-                  </View>
+{step === 0 && (
+               <Animated.View entering={FadeInDown.duration(500)} style={styles.landing}>
+                 <View style={[styles.topNav, { backgroundColor: '#ffffff', borderColor: '#e2e8f0' }]}>
+                   <View style={styles.brandRow}>
+                     <Animated.Image source={{ uri: WALLEX_BRAND.logoUrl }} style={[styles.brandLogo, logoSpinStyle]} />
+                     <Text style={styles.brandName}>wallex</Text>
+                   </View>
 
-                  {SCREEN_WIDTH > 760 && (
-                    <View style={styles.navLinks}>
-                      {['Security', 'Wallet', 'KYC', 'Support'].map((item) => (
-                        <Text key={item} style={styles.navLink}>{item}</Text>
-                      ))}
-                    </View>
-                  )}
+                   {SCREEN_WIDTH > 500 && (
+                     <View style={styles.navLinks}>
+                       {['Security', 'Wallet', 'KYC', 'Support'].map((item) => (
+                         <Text key={item} style={styles.navLink}>{item}</Text>
+                       ))}
+                     </View>
+                   )}
 
-                  <View style={styles.navActions}>
-                    <TouchableOpacity style={styles.loginBtn} onPress={() => setAuthMode('login')}>
-                      <Text style={styles.loginBtnText}>Log in</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.openBtn} onPress={() => setAuthMode('signup')}>
-                      <Text style={styles.openBtnText}>Open Wallet</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                   <View style={styles.navActions}>
+                     <TouchableOpacity style={styles.loginBtn} onPress={() => setAuthMode('login')}>
+                       <Text style={styles.loginBtnText}>Log in</Text>
+                     </TouchableOpacity>
+                     <TouchableOpacity style={styles.openBtn} onPress={() => setAuthMode('signup')}>
+                       <Text style={styles.openBtnText}>Open Wallet</Text>
+                     </TouchableOpacity>
+                   </View>
+                 </View>
 
                 <LinearGradient colors={['#f8fafc', '#e0f2fe']} style={styles.heroSection}>
                   <View style={styles.heroGrid}>
@@ -524,10 +542,11 @@ export default function OnboardingScreen() {
               </>
             )}
             <TouchableOpacity
-              style={styles.authSubmit}
-              onPress={handleAuthSubmit}
+              style={[styles.authSubmit, authBusy && { opacity: 0.6 }]}
+              onPress={() => void handleAuthSubmit()}
+              disabled={authBusy}
             >
-              <Text style={styles.authSubmitText}>{authMode === 'login' ? 'Log in' : 'Continue Setup'}</Text>
+              <Text style={styles.authSubmitText}>{authBusy ? 'Please wait...' : authMode === 'login' ? 'Log in' : 'Continue Setup'}</Text>
             </TouchableOpacity>
             {authMode === 'signup' && (
               <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup} disabled={authBusy}>
@@ -561,69 +580,79 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
   gradient: { flex: 1 },
-  content: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 22, justifyContent: 'flex-start' },
+  content: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 12, justifyContent: 'flex-start' },
   landing: { gap: 0, paddingBottom: 0, backgroundColor: '#ffffff' },
-  topNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 0, paddingHorizontal: 18, paddingVertical: 14, gap: 14 },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brandLogo: { width: 36, height: 36, borderRadius: 10 },
-  brandName: { fontSize: 29, fontFamily: 'Inter-Bold', letterSpacing: 0, color: '#0f172a' },
+  topNav: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    borderWidth: 1, 
+    borderRadius: 16, 
+    paddingHorizontal: 16, 
+    paddingVertical: 12, 
+    gap: 8,
+    marginHorizontal: 4,
+  },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  brandLogo: { width: 32, height: 32, borderRadius: 8 },
+  brandName: { fontSize: 24, fontFamily: 'Inter-Bold', letterSpacing: -0.3, color: '#0f172a' },
   domain: { fontSize: 12, fontFamily: 'Inter-Medium', marginTop: -2 },
-  navLinks: { flexDirection: 'row', alignItems: 'center', gap: 22 },
+  navLinks: { flexDirection: 'row', alignItems: 'center', gap: 20 },
   navLink: { fontSize: 13, fontFamily: 'Inter-SemiBold', color: '#475569' },
-  navActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  loginBtn: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 22, paddingHorizontal: 18, paddingVertical: 10, backgroundColor: '#ffffff' },
+  navActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  loginBtn: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#ffffff' },
   loginBtnText: { fontSize: 13, fontFamily: 'Inter-SemiBold', color: '#334155' },
-  openBtn: { borderRadius: 22, paddingHorizontal: 20, paddingVertical: 11, backgroundColor: '#0f172a' },
+  openBtn: { borderRadius: 20, paddingHorizontal: 20, paddingVertical: 9, backgroundColor: '#0f172a' },
   openBtnText: { fontSize: 13, fontFamily: 'Inter-SemiBold', color: '#ffffff' },
   adminPill: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 9 },
   adminPillText: { fontSize: 12, fontFamily: 'Inter-SemiBold' },
-  heroSection: { paddingHorizontal: 22, paddingTop: 42, paddingBottom: 42 },
-  heroGrid: { gap: 28 },
-  heroCopy: { gap: 18, alignItems: 'flex-start' },
+  heroSection: { paddingHorizontal: 24, paddingTop: 48, paddingBottom: 48 },
+  heroGrid: { gap: 32 },
+  heroCopy: { gap: 20, alignItems: 'flex-start', maxWidth: 540 },
   eyebrow: { fontSize: 12, fontFamily: 'Inter-Bold', textTransform: 'uppercase', letterSpacing: 0.8 },
-  heroTitle: { fontSize: 56, fontFamily: 'Inter-Bold', lineHeight: 60, letterSpacing: 0, color: '#0f172a' },
+  heroTitle: { fontSize: 44, fontFamily: 'Inter-Bold', lineHeight: 50, letterSpacing: -0.5, color: '#0f172a' },
   titleAccent: { color: '#0284c7' },
-  heroBody: { fontSize: 18, fontFamily: 'Inter-Regular', lineHeight: 28, maxWidth: 520, color: '#475569' },
+  heroBody: { fontSize: 17, fontFamily: 'Inter-Regular', lineHeight: 26, maxWidth: 520, color: '#475569' },
   heroActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#0f172a', paddingHorizontal: 30, paddingVertical: 16, borderRadius: 28, alignSelf: 'flex-start' },
-  primaryBtnText: { color: '#fff', fontSize: 17, fontFamily: 'Inter-SemiBold' },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#0f172a', paddingHorizontal: 32, paddingVertical: 15, borderRadius: 26, alignSelf: 'flex-start' },
+  primaryBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter-SemiBold' },
   secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 14, borderRadius: 18, borderWidth: 1 },
   secondaryBtnText: { fontSize: 14, fontFamily: 'Inter-SemiBold' },
-  securityBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 22, marginTop: 8 },
-  securityBadge: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  securityBadges: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, marginTop: 8 },
+  securityBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   securityBadgeText: { fontSize: 12, fontFamily: 'Inter-SemiBold', color: '#64748b' },
-  phoneWrap: { alignItems: 'center', justifyContent: 'center', position: 'relative', paddingTop: 20 },
-  phoneImage: { width: Math.min(320, SCREEN_WIDTH - 80), height: 390, borderRadius: 48, borderWidth: 8, borderColor: '#ffffff' },
-  priceCard: { position: 'absolute', top: 0, right: 18, backgroundColor: '#ffffff', borderRadius: 22, paddingHorizontal: 16, paddingVertical: 14, borderWidth: 1, borderColor: '#e2e8f0' },
+  phoneWrap: { alignItems: 'center', justifyContent: 'center', position: 'relative', paddingTop: 24 },
+  phoneImage: { width: Math.min(300, SCREEN_WIDTH - 60), height: 360, borderRadius: 42, borderWidth: 6, borderColor: '#ffffff' },
+  priceCard: { position: 'absolute', top: 0, right: 18, backgroundColor: '#ffffff', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: '#e2e8f0' },
   priceLabel: { fontSize: 10, fontFamily: 'Inter-SemiBold', color: '#64748b', textAlign: 'center' },
-  priceValue: { fontSize: 24, fontFamily: 'Inter-Bold', color: '#059669', textAlign: 'center', marginTop: 2 },
-  priceChange: { fontSize: 12, fontFamily: 'Inter-SemiBold', color: '#10b981', textAlign: 'center', marginTop: 2 },
+  priceValue: { fontSize: 22, fontFamily: 'Inter-Bold', color: '#059669', textAlign: 'center', marginTop: 2 },
+  priceChange: { fontSize: 11, fontFamily: 'Inter-SemiBold', color: '#10b981', textAlign: 'center', marginTop: 2 },
   heroCard: { borderRadius: 28, borderWidth: 1, padding: 8, position: 'relative', overflow: 'hidden' },
   heroImage: { width: '100%', height: Math.min(360, SCREEN_WIDTH * 0.58), borderRadius: 22 },
-  tickerWrap: { overflow: 'hidden', backgroundColor: '#f8fafc', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#e2e8f0', paddingVertical: 14 },
-  tickerTrack: { flexDirection: 'row', gap: 44, width: SCREEN_WIDTH * 4 },
-  tickerText: { fontSize: 13, fontFamily: 'Inter-SemiBold', color: '#64748b' },
-  featuresSection: { paddingHorizontal: 22, paddingVertical: 42, gap: 14 },
-  featureCard: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 24, padding: 24, backgroundColor: '#ffffff', gap: 10 },
-  featureIcon: { width: 46, height: 46, borderRadius: 16, backgroundColor: '#e0f2fe', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  featureTitle: { fontSize: 22, fontFamily: 'Inter-Bold', color: '#0f172a' },
-  featureBody: { fontSize: 14, fontFamily: 'Inter-Regular', color: '#64748b', lineHeight: 20 },
-  securitySection: { paddingHorizontal: 22, paddingVertical: 56, backgroundColor: '#f8fafc', gap: 14 },
-  securityTitle: { fontSize: 34, fontFamily: 'Inter-Bold', color: '#0f172a', letterSpacing: 0, lineHeight: 40 },
-  securityIntro: { fontSize: 15, fontFamily: 'Inter-Regular', color: '#475569', lineHeight: 23, maxWidth: 680 },
+  tickerWrap: { overflow: 'hidden', backgroundColor: '#f8fafc', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#e2e8f0', paddingVertical: 12 },
+  tickerTrack: { flexDirection: 'row', gap: 36, width: SCREEN_WIDTH * 4 },
+  tickerText: { fontSize: 12, fontFamily: 'Inter-SemiBold', color: '#64748b' },
+  featuresSection: { paddingHorizontal: 24, paddingVertical: 40, gap: 16 },
+  featureCard: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 22, padding: 22, backgroundColor: '#ffffff', gap: 10 },
+  featureIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#e0f2fe', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  featureTitle: { fontSize: 20, fontFamily: 'Inter-Bold', color: '#0f172a' },
+  featureBody: { fontSize: 13, fontFamily: 'Inter-Regular', color: '#64748b', lineHeight: 19 },
+  securitySection: { paddingHorizontal: 24, paddingVertical: 50, backgroundColor: '#f8fafc', gap: 16 },
+  securityTitle: { fontSize: 30, fontFamily: 'Inter-Bold', color: '#0f172a', letterSpacing: -0.3, lineHeight: 36 },
+  securityIntro: { fontSize: 15, fontFamily: 'Inter-Regular', color: '#475569', lineHeight: 22, maxWidth: 680 },
   securityGrid: { gap: 12, marginTop: 12 },
-  securityTile: { borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#ffffff', borderRadius: 22, padding: 18, gap: 8 },
-  securityTileIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
-  securityTileTitle: { fontSize: 16, fontFamily: 'Inter-Bold', color: '#0f172a' },
-  securityTileBody: { fontSize: 13, fontFamily: 'Inter-Regular', color: '#64748b', lineHeight: 19 },
-  finalCta: { backgroundColor: '#0f172a', alignItems: 'center', paddingHorizontal: 22, paddingVertical: 54, gap: 18 },
-  finalTitle: { fontSize: 38, fontFamily: 'Inter-Bold', color: '#ffffff', textAlign: 'center', lineHeight: 44 },
-  finalButton: { backgroundColor: '#ffffff', borderRadius: 30, paddingHorizontal: 32, paddingVertical: 17 },
-  finalButtonText: { fontSize: 18, fontFamily: 'Inter-SemiBold', color: '#0f172a' },
+  securityTile: { borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#ffffff', borderRadius: 20, padding: 16, gap: 8 },
+  securityTileIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
+  securityTileTitle: { fontSize: 15, fontFamily: 'Inter-Bold', color: '#0f172a' },
+  securityTileBody: { fontSize: 12, fontFamily: 'Inter-Regular', color: '#64748b', lineHeight: 18 },
+  finalCta: { backgroundColor: '#0f172a', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 48, gap: 16 },
+  finalTitle: { fontSize: 32, fontFamily: 'Inter-Bold', color: '#ffffff', textAlign: 'center', lineHeight: 38 },
+  finalButton: { backgroundColor: '#ffffff', borderRadius: 28, paddingHorizontal: 28, paddingVertical: 15 },
+  finalButtonText: { fontSize: 16, fontFamily: 'Inter-SemiBold', color: '#0f172a' },
   finalSupport: { fontSize: 12, fontFamily: 'Inter-Medium', color: '#94a3b8' },
-  landingFooter: { backgroundColor: '#ffffff', borderTopWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 22, paddingVertical: 30, gap: 14, alignItems: 'center' },
-  footerLogo: { width: 32, height: 32, borderRadius: 9 },
-  footerBrand: { fontSize: 28, fontFamily: 'Inter-Bold', color: '#0f172a' },
+  landingFooter: { backgroundColor: '#ffffff', borderTopWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 24, paddingVertical: 28, gap: 12, alignItems: 'center' },
+  footerLogo: { width: 28, height: 28, borderRadius: 8 },
+  footerBrand: { fontSize: 24, fontFamily: 'Inter-Bold', color: '#0f172a' },
   marketMarquee: { overflow: 'hidden', borderWidth: 1, borderRadius: 18, paddingVertical: 12 },
   marketTrack: { flexDirection: 'row', gap: 18, width: SCREEN_WIDTH * 4 },
   coinBadge: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },

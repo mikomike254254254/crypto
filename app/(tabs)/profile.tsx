@@ -29,7 +29,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export default function ProfileScreen() {
   const router = useRouter();
   const { theme, isDark, toggleTheme } = useTheme();
-  const { profile, setProfile, setSecurity } = useUser();
+  const { profile, setProfile, setSecurity, signOut } = useUser();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
   const [customAvatarUrl, setCustomAvatarUrl] = useState('');
@@ -242,7 +242,11 @@ export default function ProfileScreen() {
           <MenuRow icon={<FileText size={18} color={theme.text.secondary} />} iconBg={theme.bg.border} label="Terms & Privacy" theme={theme} onPress={() => {}} />
         </View>
 
-        <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: theme.error[500] + '18', borderColor: theme.error[500] + '44' }]} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={[styles.logoutBtn, { backgroundColor: theme.error[500] + '18', borderColor: theme.error[500] + '44' }]}
+          activeOpacity={0.8}
+          onPress={() => void signOut()}
+        >
           <LogOut size={18} color={theme.error[400]} />
           <Text style={[styles.logoutText, { color: theme.error[400] }]}>Sign Out</Text>
         </TouchableOpacity>

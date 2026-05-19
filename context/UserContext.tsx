@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { ImageSourcePropType } from 'react-native';
 import { CARTOON_AVATARS } from '@/constants/brand';
 import { createRippleWalletAddress } from '@/lib/wallet';
+import { supabase, loadUserProfile } from '@/lib/supabase';
 
 export interface UserProfile {
   name: string;
@@ -35,6 +36,7 @@ export interface UserProfile {
     biometricEnabled: boolean;
   };
   isOnboarded: boolean;
+  supabaseId: string | null;
 }
 
 const DEFAULT_PROFILE: UserProfile = {
@@ -69,6 +71,7 @@ const DEFAULT_PROFILE: UserProfile = {
     biometricEnabled: false,
   },
   isOnboarded: false,
+  supabaseId: null,
 };
 
 interface UserContextType {
@@ -78,6 +81,8 @@ interface UserContextType {
   submitKyc: (personalInfo: UserProfile['personalInfo'], idType: string) => void;
   uploadDocument: (doc: 'frontUploaded' | 'backUploaded' | 'selfieUploaded') => void;
   setSecurity: (updates: Partial<UserProfile['security']>) => void;
+  signOut: () => Promise<void>;
+  isLoadingAuth: boolean;
 }
 
 const UserContext = createContext<UserContextType>({
@@ -87,10 +92,75 @@ const UserContext = createContext<UserContextType>({
   submitKyc: () => {},
   uploadDocument: () => {},
   setSecurity: () => {},
+  signOut: async () => {},
+  isLoadingAuth: false,
 });
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const [profile, setProfileState] = useState<UserProfile>(DEFAULT_PROFILE);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
+  // On mount: check if there is an existing Supabase session and restore profile
+  useEffect(() => {
+    let mounted = true;
+
+    async function restoreSession() {
+      if (!supabase) {
+        setIsLoadingAuth(false);
+        return;
+      }
+
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+
+      if (session?.user && mounted) {
+        await hydrateProfileFromSupabase(session.user);
+      }
+
+      if (mounted) setIsLoadingAuth(false);
+    }
+
+    restoreSession();
+
+    // Listen to auth state changes (sign in, sign out, token refresh)
+    const { data: listener } = supabase?.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      if (event === 'SIGNED_IN' && session?.user) {
+        await hydrateProfileFromSupabase(session.user);
+      }
+      if (event === 'SIGNED_OUT') {
+        setProfileState(DEFAULT_PROFILE);
+      }
+    }) ?? { data: { subscription: null } };
+
+    return () => {
+      mounted = false;
+      listener?.subscription?.unsubscribe();
+    };
+  }, []);
+
+  async function hydrateProfileFromSupabase(user: { id: string; email?: string; user_metadata?: Record<string, string> }) {
+    const dbProfile = await loadUserProfile(user.id);
+
+    const name = dbProfile?.full_name ?? user.user_metadata?.full_name ?? '';
+    const email = dbProfile?.email ?? user.email ?? '';
+    const wallet = dbProfile?.wallet ?? user.user_metadata?.wallet ?? createRippleWalletAddress(email, name);
+    const avatarUri = dbProfile?.avatar_url ?? user.user_metadata?.avatar_url ?? CARTOON_AVATARS[0].uri;
+    const kycStatus = (dbProfile?.kyc_status ?? 'unverified') as UserProfile['kycStatus'];
+
+    setProfileState((prev) => ({
+      ...prev,
+      name,
+      email,
+      wallet,
+      avatarUri,
+      kycStatus,
+      authProvider: 'email',
+      passwordSet: true,
+      isOnboarded: true,
+      supabaseId: user.id,
+    }));
+  }
 
   const setProfile = (updates: Partial<UserProfile>) => {
     setProfileState((prev) => ({ ...prev, ...updates }));
@@ -152,8 +222,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const signOut = async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    setProfileState(DEFAULT_PROFILE);
+  };
+
   return (
-    <UserContext.Provider value={{ profile, setProfile, completeOnboarding, submitKyc, uploadDocument, setSecurity }}>
+    <UserContext.Provider value={{ profile, setProfile, completeOnboarding, submitKyc, uploadDocument, setSecurity, signOut, isLoadingAuth }}>
       {children}
     </UserContext.Provider>
   );

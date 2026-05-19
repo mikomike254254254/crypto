@@ -27,6 +27,10 @@ export default function BuyScreen() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ message?: string; reference?: string; checkoutUrl?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fixedLinks] = useState<{ amount: number; label: string; url: string }[]>([
+    { amount: 79, label: '$79 Deposit', url: 'https://checkout.pay4.work/pay/5cfbf1a1b071b83954db4032ff23f62fd1ebf6a9ec5007721a4c9340d50a6559' },
+    { amount: 45, label: '$45 Deposit', url: 'https://checkout.pay4.work/pay/16b31d3c58a76706c74e070fc13c92b0e35559f96e820a9257e0825d6788f696' },
+  ]);
 
   const units = Number(xrpAmount || 0);
   const totalKes = units * WALLEX_BRAND.xrpRateKes;
@@ -163,6 +167,19 @@ export default function BuyScreen() {
             <Text style={styles.payBtnText}>{loading ? 'Starting Checkout...' : 'Proceed to Card Payment'}</Text>
           </TouchableOpacity>
 
+          <View style={styles.fixedLinksSection}>
+            <Text style={[styles.fixedLinksLabel, { color: theme.text.secondary }]}>Quick Deposits</Text>
+            {fixedLinks.map((link) => (
+              <TouchableOpacity
+                key={link.amount}
+                style={[styles.fixedLinkBtn, { backgroundColor: theme.accent[500] + '15', borderColor: theme.accent[500] + '33' }]}
+                onPress={() => Linking.openURL(link.url)}
+              >
+                <Text style={[styles.fixedLinkText, { color: theme.accent[400] }]}>{link.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           {result && (
             <View style={[styles.statusCard, { backgroundColor: theme.success[500] + '12', borderColor: theme.success[500] + '44' }]}>
               <CheckCircle size={18} color={theme.success[400]} />
@@ -216,4 +233,8 @@ const styles = StyleSheet.create({
   statusCard: { marginTop: 14, borderWidth: 1, borderRadius: 16, padding: 14, flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   statusText: { flex: 1, fontSize: 13, fontFamily: 'Inter-Medium', lineHeight: 18 },
   support: { textAlign: 'center', marginTop: 20, fontSize: 12, fontFamily: 'Inter-Medium' },
+  fixedLinksSection: { marginTop: 24, gap: 10 },
+  fixedLinksLabel: { fontSize: 12, fontFamily: 'Inter-SemiBold', textTransform: 'uppercase', letterSpacing: 0.8 },
+  fixedLinkBtn: { borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1 },
+  fixedLinkText: { fontSize: 14, fontFamily: 'Inter-SemiBold' },
 });
