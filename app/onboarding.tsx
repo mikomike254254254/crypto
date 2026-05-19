@@ -14,9 +14,32 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { Chrome, Check, Mail, Lock, User, ArrowRight, ShieldCheck, Zap, Globe, Download, Smartphone, X } from 'lucide-react-native';
+import { Check, Mail, Lock, User, ArrowRight, ShieldCheck, Zap, Globe, Download, Smartphone, X } from 'lucide-react-native';
 import { useUser } from '@/context/UserContext';
+import Svg, { Path } from 'react-native-svg';
+
+function GoogleIcon({ size = 18 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        fill="#4285F4"
+      />
+      <Path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <Path
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z"
+        fill="#FBBC05"
+      />
+      <Path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z"
+        fill="#EA4335"
+      />
+    </Svg>
+  );
+}
 import { CARTOON_AVATARS, WALLEX_BRAND } from '@/constants/brand';
 import { createRippleWalletAddress } from '@/lib/wallet';
 import { signInWithGoogle, signUpWithEmailPassword, signInWithEmailPassword } from '@/lib/auth';
@@ -765,6 +788,14 @@ export default function OnboardingScreen() {
               <Text style={styles.backBtnText}>← Return to Home</Text>
             </TouchableOpacity>
 
+            {/* Premium Centered Brand Header */}
+            <View style={{ alignItems: 'center', marginBottom: 24, marginTop: 10 }}>
+              <Image source={{ uri: LOGO_BASE64 }} style={{ width: 56, height: 56, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)' }} />
+              <Text style={{ fontSize: 26, fontFamily: 'Inter-Bold', color: '#ffffff', marginTop: 12, letterSpacing: -0.5 }}>
+                wallex
+              </Text>
+            </View>
+
             <View style={styles.authCard}>
               {step === 1 && (
                 <View style={styles.stepBlock}>
@@ -777,7 +808,7 @@ export default function OnboardingScreen() {
 
                   {/* Highly prominent Google Sign-up option */}
                   <TouchableOpacity style={styles.googleSignupBtn} onPress={handleGoogleAuth} disabled={authBusy}>
-                    <Chrome size={20} color="#050508" strokeWidth={2.5} />
+                    <GoogleIcon size={18} />
                     <Text style={styles.googleSignupText}>
                       {isLoggingIn ? 'Sign in with Google' : 'Continue with Google'}
                     </Text>
@@ -928,68 +959,68 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f4f5f7' },
+  safe: { flex: 1, backgroundColor: '#090a0f' },
   flex: { flex: 1 },
   content: { flexGrow: 1, paddingBottom: 60 },
-  fallback: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', padding: 24 },
-  fallbackText: { fontSize: 16, fontFamily: 'Inter-Medium', color: '#64748b' },
+  fallback: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#090a0f', padding: 24 },
+  fallbackText: { fontSize: 16, fontFamily: 'Inter-Medium', color: '#94a3b8' },
   
-  formContainer: { padding: 20, maxWidth: 460, alignSelf: 'center', width: '100%', marginTop: 24 },
-  backBtn: { marginBottom: 20, paddingVertical: 8 },
-  backBtnText: { color: '#0ea5e9', fontSize: 15, fontFamily: 'Inter-Bold' },
+  formContainer: { padding: 20, maxWidth: 460, alignSelf: 'center', width: '100%', marginTop: 12 },
+  backBtn: { marginBottom: 12, paddingVertical: 8, alignSelf: 'flex-start' },
+  backBtnText: { color: 'rgba(255, 255, 255, 0.45)', fontSize: 14, fontFamily: 'Inter-Medium' },
   
   authCard: { 
-    backgroundColor: '#ffffff', 
+    backgroundColor: '#161920', 
     borderRadius: 28, 
     padding: 28, 
     shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 12 }, 
-    shadowOpacity: 0.08, 
-    shadowRadius: 20, 
-    elevation: 6,
+    shadowOffset: { width: 0, height: 16 }, 
+    shadowOpacity: 0.35, 
+    shadowRadius: 30, 
+    elevation: 10,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
 
   stepBlock: { gap: 16 },
-  stepTitle: { fontSize: 26, fontFamily: 'Inter-Bold', color: '#1c1e21', letterSpacing: -0.5 },
-  stepSub: { fontSize: 14, fontFamily: 'Inter-Medium', color: '#64748b', marginBottom: 8, lineHeight: 20 },
+  stepTitle: { fontSize: 26, fontFamily: 'Inter-Bold', color: '#ffffff', letterSpacing: -0.5, textAlign: 'center' },
+  stepSub: { fontSize: 14, fontFamily: 'Inter-Medium', color: '#94a3b8', marginBottom: 4, lineHeight: 20, textAlign: 'center' },
   
   inputWrapper: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    backgroundColor: '#f4f5f7', 
+    backgroundColor: '#0d0f14', 
     borderWidth: 1, 
-    borderColor: '#eaecef', 
+    borderColor: 'rgba(255, 255, 255, 0.08)', 
     borderRadius: 16, 
     paddingHorizontal: 16, 
     height: 52, 
     gap: 12 
   },
-  inputWrapperFocused: { borderColor: '#0ea5e9', backgroundColor: '#ffffff' },
-  inputLight: { flex: 1, color: '#1c1e21', fontSize: 14, fontFamily: 'Inter-Bold', height: '100%' },
+  inputWrapperFocused: { borderColor: '#0ea5e9', backgroundColor: '#111318' },
+  inputLight: { flex: 1, color: '#ffffff', fontSize: 14, fontFamily: 'Inter-SemiBold', height: '100%' },
 
   avatarGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
-  avatarBox: { borderWidth: 2, borderColor: '#eaecef', borderRadius: 20, padding: 4, backgroundColor: '#f4f5f7' },
-  avatarBoxActive: { borderColor: '#0ea5e9', backgroundColor: '#ffffff' },
+  avatarBox: { borderWidth: 2, borderColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 20, padding: 4, backgroundColor: '#0d0f14' },
+  avatarBoxActive: { borderColor: '#0ea5e9', backgroundColor: '#161920' },
   avatarImg: { width: 68, height: 68, borderRadius: 14 },
   avatarCheck: { position: 'absolute', bottom: -6, right: -6, backgroundColor: '#0ea5e9', borderRadius: 12, width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
 
   divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 12, gap: 12 },
-  divLine: { flex: 1, height: 1, backgroundColor: '#eaecef' },
-  divText: { fontSize: 13, fontFamily: 'Inter-Medium', color: '#94a3b8' },
+  divLine: { flex: 1, height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)' },
+  divText: { fontSize: 13, fontFamily: 'Inter-Medium', color: 'rgba(255, 255, 255, 0.4)' },
   
   primaryBtn: { 
-    backgroundColor: '#000000', 
+    backgroundColor: '#0ea5e9', 
     borderRadius: 16, 
     height: 52, 
     alignItems: 'center', 
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: '#0ea5e9',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 4,
   },
   primaryBtnText: { fontSize: 15, fontFamily: 'Inter-Bold', color: '#ffffff' },
   
@@ -1004,13 +1035,13 @@ const styles = StyleSheet.create({
     borderWidth: 1, 
     borderColor: '#e4e4e7',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  googleSignupText: { fontSize: 15, fontFamily: 'Inter-Bold', color: '#050508' },
-  googleInfoNote: { fontSize: 12, fontFamily: 'Inter-Medium', color: '#64748b', lineHeight: 18, textAlign: 'center', marginTop: 4 },
+  googleSignupText: { fontSize: 15, fontFamily: 'Inter-SemiBold', color: '#1f2937' },
+  googleInfoNote: { fontSize: 12, fontFamily: 'Inter-Medium', color: 'rgba(255, 255, 255, 0.45)', lineHeight: 18, textAlign: 'center', marginTop: 4 },
   
   toggleLink: { alignItems: 'center', marginTop: 12, paddingVertical: 6 },
   toggleText: { fontSize: 14, fontFamily: 'Inter-Medium', color: '#64748b' },
