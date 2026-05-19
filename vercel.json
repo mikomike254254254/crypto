@@ -1,0 +1,27 @@
+{
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "dist",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/admin",
+      "destination": "/"
+    },
+    {
+      "source": "/buy",
+      "destination": "/"
+    },
+    {
+      "source": "/send",
+      "destination": "/"
+    },
+    {
+      "source": "/receive",
+      "destination": "/"
+    },
+    {
+      "source": "/kyc",
+      "destination": "/"
+    }
+  ]
+}
