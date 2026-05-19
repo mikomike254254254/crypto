@@ -91,7 +91,7 @@ export async function signInWithGoogle() {
     return { ok: true, mode: 'local' as const, message: 'Supabase is not configured locally. Continue with demo setup.' };
   }
 
-  const { error } = await supabase.auth.signInWithOAuth({
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: getAuthRedirectUrl('/'),
@@ -103,7 +103,18 @@ export async function signInWithGoogle() {
   });
 
   if (error) return { ok: false, mode: 'supabase' as const, message: error.message };
-  return { ok: true, mode: 'supabase' as const, message: 'Google signup opened.' };
+
+  // Explicitly trigger the browser redirection on Web if the Supabase client skipped it
+  if (data?.url) {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = data.url;
+    } else {
+      const { openURL } = require('expo-linking');
+      openURL(data.url).catch((err) => console.error('Failed to open Google OAuth URL:', err));
+    }
+  }
+
+  return { ok: true, mode: 'supabase' as const, message: 'Google secure signup opened.' };
 }
 
 export async function signOutUser() {
