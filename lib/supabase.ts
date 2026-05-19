@@ -1,9 +1,9 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-const enableWalletSync = process.env.EXPO_PUBLIC_ENABLE_SUPABASE_SYNC === 'true';
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://nzzstvvbrcdhuiqppdpv.supabase.co';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56enN0dnZicmNkaHVpcXBwZHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxNzE5ODIsImV4cCI6MjA5NDc0Nzk4Mn0.rV5A7btfrq1UPc7JOk4QvuOMKPOb-2eD3AmZ5lKZWGk';
+const enableWalletSync = process.env.EXPO_PUBLIC_ENABLE_SUPABASE_SYNC === 'true' || true;
 
 // Whether the client can be initialized at all (URL + anon key present)
 export const isSupabaseClientConfigured = Boolean(supabaseUrl && supabaseAnonKey);
