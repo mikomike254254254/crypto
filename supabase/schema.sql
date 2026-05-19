@@ -7,7 +7,7 @@ create table if not exists public.users (
   email text,
   full_name text,
   avatar_url text,
-  kyc_status text default 'unverified' check (kyc_status in ('pending', 'approved', 'rejected', 'unverified')),
+  kyc_status text default 'unverified' check (kyc_status in ('pending', 'approved', 'verified', 'rejected', 'unverified')),
   signup_bonus_awarded boolean default false,
   created_at timestamptz default now()
 );
@@ -248,6 +248,15 @@ create policy "read own notifications" on public.notifications
 drop policy if exists "create own mpesa withdraw request" on public.mpesa_withdraws;
 create policy "create own mpesa withdraw request" on public.mpesa_withdraws
   for insert with check (exists (
+    select 1 from public.users u
+    where u.auth_user_id = auth.uid()
+      and u.wallet = mpesa_withdraws.wallet
+      and u.kyc_status in ('approved', 'verified')
+  ));
+
+drop policy if exists "read own mpesa withdraw requests" on public.mpesa_withdraws;
+create policy "read own mpesa withdraw requests" on public.mpesa_withdraws
+  for select using (exists (
     select 1 from public.users u
     where u.auth_user_id = auth.uid() and u.wallet = mpesa_withdraws.wallet
   ));

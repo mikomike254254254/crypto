@@ -212,6 +212,11 @@ module.exports = async function handler(req, res) {
 
     if (action === 'mpesaWithdraw') {
       if (!wallet || !phone || !Number(amount)) return send(res, 400, { error: 'Wallet, phone, and amount are required' });
+      const { data: user, error: userError } = await supabase.from('users').select('kyc_status').eq('wallet', wallet).maybeSingle();
+      if (userError) throw userError;
+      if (!['approved', 'verified'].includes(user?.kyc_status)) {
+        return send(res, 403, { error: 'KYC approval required before M-Pesa withdrawal' });
+      }
       const { error } = await supabase.from('mpesa_withdraws').insert({
         wallet,
         phone,

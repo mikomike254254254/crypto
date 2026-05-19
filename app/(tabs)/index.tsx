@@ -6,12 +6,14 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import Animated, { Easing, FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { Eye, EyeOff, ArrowUpRight, ArrowDownLeft, CreditCard, Copy, ShieldCheck } from 'lucide-react-native';
+import { Eye, EyeOff, ArrowUpRight, ArrowDownLeft, CreditCard, Copy, ShieldCheck, Smartphone, Banknote, CheckCircle, CircleAlert, X } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
@@ -32,6 +34,11 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [displayBalance, setDisplayBalance] = useState(0);
+  const [mpesaVisible, setMpesaVisible] = useState(false);
+  const [mpesaPhone, setMpesaPhone] = useState('');
+  const [mpesaAmount, setMpesaAmount] = useState('');
+  const [mpesaStatus, setMpesaStatus] = useState('');
+  const [mpesaLoading, setMpesaLoading] = useState(false);
   const liveMotion = useSharedValue(1);
   const logoSpin = useSharedValue(0);
 
@@ -39,6 +46,7 @@ export default function HomeScreen() {
   const shortAddress = shortWallet(profile.wallet, 16, 7);
   const displayRatio = TOTAL_BALANCE > 0 ? Math.min(displayBalance / TOTAL_BALANCE, 1) : 1;
   const displayRxp = primaryAsset.balance * displayRatio;
+  const isKycVerified = profile.kycStatus === 'verified' || String(profile.kycStatus) === 'approved';
 
   const animateCounters = useCallback(() => {
     const startedAt = Date.now();
@@ -77,6 +85,50 @@ export default function HomeScreen() {
   const handleCopy = () => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const openMpesaWithdraw = () => {
+    setMpesaStatus(isKycVerified ? '' : 'Your account must be verified by Wallex before M-Pesa withdrawals can be requested.');
+    setMpesaVisible(true);
+  };
+
+  const submitMpesaWithdraw = async () => {
+    const amountKes = Number(mpesaAmount);
+    const phone = mpesaPhone.trim();
+
+    if (!isKycVerified) {
+      setMpesaStatus('KYC approval required. Submit KYC in Profile and wait for Wallex approval.');
+      return;
+    }
+
+    if (!phone || !amountKes || amountKes <= 0) {
+      setMpesaStatus('Enter a valid M-Pesa phone number and withdrawal amount.');
+      return;
+    }
+
+    setMpesaLoading(true);
+    setMpesaStatus('');
+    try {
+      const apiBase = process.env.EXPO_PUBLIC_API_BASE_URL ?? '';
+      const response = await fetch(`${apiBase}/api/mpesa-withdraw`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wallet: profile.wallet,
+          phone,
+          amountKes,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? 'Withdrawal request failed');
+      setMpesaStatus(data.message ?? 'M-Pesa withdrawal request submitted for review.');
+      setMpesaPhone('');
+      setMpesaAmount('');
+    } catch (error) {
+      setMpesaStatus(error instanceof Error ? error.message : 'Withdrawal request failed');
+    } finally {
+      setMpesaLoading(false);
+    }
   };
 
   const cardGradient = ['#020617', '#0f172a', '#075985'] as [string, string, string];
@@ -233,6 +285,29 @@ export default function HomeScreen() {
         </Animated.View>
 
         {/* Asset List */}
+        <Animated.View entering={FadeInUp.delay(240).duration(400)}>
+          <TouchableOpacity
+            style={[styles.mpesaCard, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}
+            onPress={openMpesaWithdraw}
+            activeOpacity={0.86}
+          >
+            <View style={[styles.mpesaIcon, { backgroundColor: isKycVerified ? theme.success[500] + '20' : theme.warning[500] + '18' }]}>
+              <Smartphone size={24} color={isKycVerified ? theme.success[400] : theme.warning[400]} />
+            </View>
+            <View style={styles.mpesaTextWrap}>
+              <Text style={[styles.mpesaTitle, { color: theme.text.primary }]}>M-Pesa Withdrawal</Text>
+              <Text style={[styles.mpesaSub, { color: theme.text.secondary }]}>
+                {isKycVerified ? 'Request KES cashout from your verified Wallex wallet.' : 'KYC approval required before cashout.'}
+              </Text>
+            </View>
+            <View style={[styles.mpesaChip, { backgroundColor: isKycVerified ? theme.success[500] + '18' : theme.warning[500] + '18' }]}>
+              <Text style={[styles.mpesaChipText, { color: isKycVerified ? theme.success[400] : theme.warning[400] }]}>
+                {isKycVerified ? 'Verified' : 'Verify'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+
         <Animated.View entering={FadeInUp.delay(280).duration(400)}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text.primary }]}>Your Assets</Text>
@@ -247,6 +322,60 @@ export default function HomeScreen() {
 
         <View style={styles.bottomPad} />
       </ScrollView>
+
+      <Modal visible={mpesaVisible} transparent animationType="fade" onRequestClose={() => setMpesaVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.mpesaModal, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleRow}>
+                <Banknote size={22} color={theme.accent[400]} />
+                <Text style={[styles.modalTitle, { color: theme.text.primary }]}>M-Pesa Withdrawal</Text>
+              </View>
+              <TouchableOpacity onPress={() => setMpesaVisible(false)} style={[styles.modalClose, { backgroundColor: theme.bg.border }]}>
+                <X size={16} color={theme.text.secondary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.modalHelp, { color: theme.text.secondary }]}>
+              Withdrawals are reviewed against your verified Wallex KYC before processing.
+            </Text>
+
+            <TextInput
+              style={[styles.modalInput, { color: theme.text.primary, borderColor: theme.bg.border, backgroundColor: theme.bg.primary }]}
+              placeholder="M-Pesa phone number"
+              placeholderTextColor={theme.text.muted}
+              keyboardType="phone-pad"
+              value={mpesaPhone}
+              onChangeText={setMpesaPhone}
+              editable={isKycVerified && !mpesaLoading}
+            />
+            <TextInput
+              style={[styles.modalInput, { color: theme.text.primary, borderColor: theme.bg.border, backgroundColor: theme.bg.primary }]}
+              placeholder="Amount in KSh"
+              placeholderTextColor={theme.text.muted}
+              keyboardType="decimal-pad"
+              value={mpesaAmount}
+              onChangeText={setMpesaAmount}
+              editable={isKycVerified && !mpesaLoading}
+            />
+
+            <TouchableOpacity
+              style={[styles.modalSubmit, { backgroundColor: isKycVerified ? theme.accent[500] : theme.bg.border }, (!isKycVerified || mpesaLoading) && { opacity: 0.74 }]}
+              onPress={submitMpesaWithdraw}
+              disabled={mpesaLoading}
+            >
+              <Text style={styles.modalSubmitText}>{mpesaLoading ? 'Submitting...' : 'Submit Withdrawal'}</Text>
+            </TouchableOpacity>
+
+            {mpesaStatus ? (
+              <View style={[styles.mpesaStatus, { borderColor: isKycVerified ? theme.success[500] + '44' : theme.warning[500] + '44', backgroundColor: isKycVerified ? theme.success[500] + '10' : theme.warning[500] + '10' }]}>
+                {isKycVerified ? <CheckCircle size={17} color={theme.success[400]} /> : <CircleAlert size={17} color={theme.warning[400]} />}
+                <Text style={[styles.mpesaStatusText, { color: isKycVerified ? theme.success[400] : theme.warning[400] }]}>{mpesaStatus}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -301,8 +430,27 @@ const styles = StyleSheet.create({
   spotlightUsd: { fontSize: 13, fontFamily: 'Inter-Regular' },
   spotlightRight: { alignItems: 'flex-end', gap: 8 },
   spotlightPrice: { fontSize: 18, fontFamily: 'Inter-SemiBold' },
+  mpesaCard: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 18, borderWidth: 1, padding: 15, marginBottom: 18 },
+  mpesaIcon: { width: 50, height: 50, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  mpesaTextWrap: { flex: 1, gap: 3 },
+  mpesaTitle: { fontSize: 16, fontFamily: 'Inter-SemiBold' },
+  mpesaSub: { fontSize: 12, fontFamily: 'Inter-Regular', lineHeight: 17 },
+  mpesaChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  mpesaChipText: { fontSize: 11, fontFamily: 'Inter-SemiBold' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { fontSize: 17, fontFamily: 'Inter-SemiBold' },
   seeAll: { fontSize: 13, fontFamily: 'Inter-Medium' },
   bottomPad: { height: 120 },
+  modalOverlay: { flex: 1, backgroundColor: '#00000099', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 18 },
+  mpesaModal: { width: '100%', maxWidth: 420, borderWidth: 1, borderRadius: 24, padding: 18, gap: 13 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  modalTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  modalTitle: { fontSize: 18, fontFamily: 'Inter-SemiBold' },
+  modalClose: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  modalHelp: { fontSize: 13, fontFamily: 'Inter-Regular', lineHeight: 19 },
+  modalInput: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 14, fontSize: 15, fontFamily: 'Inter-Regular' },
+  modalSubmit: { borderRadius: 16, paddingVertical: 15, alignItems: 'center' },
+  modalSubmitText: { color: '#fff', fontSize: 15, fontFamily: 'Inter-SemiBold' },
+  mpesaStatus: { borderWidth: 1, borderRadius: 14, padding: 12, flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  mpesaStatusText: { flex: 1, fontSize: 12, fontFamily: 'Inter-Medium', lineHeight: 17 },
 });
