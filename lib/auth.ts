@@ -110,7 +110,7 @@ export async function signInWithGoogle() {
       window.location.href = data.url;
     } else {
       const { openURL } = require('expo-linking');
-      openURL(data.url).catch((err) => console.error('Failed to open Google OAuth URL:', err));
+      openURL(data.url).catch((err: any) => console.error('Failed to open Google OAuth URL:', err));
     }
   }
 
