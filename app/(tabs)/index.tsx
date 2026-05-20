@@ -576,10 +576,6 @@ export default function HomeScreen() {
                     {/* Icon */}
                     <View style={styles.assetIconWrap}>
                       {asset.icon}
-                      {/* Small rank badge */}
-                      <View style={[styles.rankBadge, { backgroundColor: asset.color + '22', borderColor: asset.color + '44' }]}>
-                        <Text style={[styles.rankText, { color: asset.color === '#000000' ? '#666' : asset.color }]}>#{index + 1}</Text>
-                      </View>
                     </View>
 
                     {/* Name + amount */}

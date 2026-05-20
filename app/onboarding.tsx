@@ -571,8 +571,10 @@ export default function OnboardingScreen() {
   const [authBusy, setAuthBusy] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [showVerificationPending, setShowVerificationPending] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
 
-  // Trigger app install suggestion 3 seconds into use
+  // Trigger app install suggestion 3 seconds into use, and capture PWA event
   useEffect(() => {
     if (step === 0) {
       const timer = setTimeout(() => {
@@ -581,6 +583,18 @@ export default function OnboardingScreen() {
       return () => clearTimeout(timer);
     }
   }, [step]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      const handleBeforeInstallPrompt = (e: Event) => {
+        e.preventDefault();
+        setDeferredPrompt(e);
+        setShowInstallPrompt(true);
+      };
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    }
+  }, []);
 
   // Window postMessage event listener for Web Platform
   useEffect(() => {
@@ -598,6 +612,21 @@ export default function OnboardingScreen() {
       return () => window.removeEventListener('message', handleMessage);
     }
   }, []);
+
+  const handleInstallClick = async () => {
+    setShowInstallPrompt(false);
+    if (deferredPrompt) {
+      // Use native browser PWA install prompt if available
+      (deferredPrompt as any).prompt();
+      const { outcome } = await (deferredPrompt as any).userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      // Show a step-by-step installation guide
+      setShowInstallGuide(true);
+    }
+  };
 
   const canProceed = step === 0
     ? true
@@ -629,6 +658,7 @@ export default function OnboardingScreen() {
         const userName = meta.full_name ?? email.split('@')[0];
         const avatarUri = meta.avatar_url ?? CARTOON_AVATARS[0].uri;
         completeOnboarding(userName, email.trim(), avatarUri, password, 'email');
+        router.replace('/(tabs)');
       } else {
         if (!name.trim() || !email.includes('@') || password.length < 8 || password !== confirmPassword) {
           setAuthNotice('Enter valid name, email, and matching password (min 8 chars).');
@@ -656,6 +686,7 @@ export default function OnboardingScreen() {
       
       // Auto-onboard and go directly to the wallet dashboard
       completeOnboarding(name.trim(), email.trim(), selectedAvatar, password, 'email');
+      router.replace('/(tabs)');
     }
   };
 
@@ -752,10 +783,7 @@ export default function OnboardingScreen() {
                 Download the secure Wallex app onto your device home screen for lightning-fast biometrics, offline portfolio updates, and secure one-click XRP payments.
               </Text>
               <View style={styles.installButtons}>
-                <TouchableOpacity style={styles.installPrimaryBtn} onPress={() => {
-                  setShowInstallPrompt(false);
-                  alert("To install, open your browser options and select 'Add to Home Screen'.");
-                }}>
+                <TouchableOpacity style={styles.installPrimaryBtn} onPress={handleInstallClick}>
                   <Download size={16} color="#050508" />
                   <Text style={styles.installPrimaryText}>Install App</Text>
                 </TouchableOpacity>
@@ -764,6 +792,75 @@ export default function OnboardingScreen() {
                 </TouchableOpacity>
               </View>
             </Animated.View>
+          </View>
+        </Modal>
+
+        {/* App Install Guide Modal */}
+        <Modal visible={showInstallGuide} transparent animationType="fade" onRequestClose={() => setShowInstallGuide(false)}>
+          <View style={styles.modalBgCenter}>
+            <View style={styles.guidePanel}>
+              <View style={styles.guideHeader}>
+                <Image source={{ uri: LOGO_BASE64 }} style={styles.guideLogo} />
+                <Text style={styles.guideTitle}>How to Install Wallex</Text>
+                <TouchableOpacity onPress={() => setShowInstallGuide(false)} style={styles.guideClose}>
+                  <X size={18} color="#94a3b8" />
+                </TouchableOpacity>
+              </View>
+              
+              <Text style={styles.guideIntro}>
+                Wallex is a Progressive Web App (PWA). You can install it on your device without using the App Store or Play Store:
+              </Text>
+
+              {Platform.OS === 'web' && typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) ? (
+                // iOS Safari Steps
+                <View style={styles.stepsContainer}>
+                  <View style={styles.stepItem}>
+                    <View style={styles.stepNum}><Text style={styles.stepNumText}>1</Text></View>
+                    <Text style={styles.stepText}>
+                      Tap the <Text style={styles.stepHighlight}>Share</Text> button in Safari (usually at the bottom of the screen).
+                    </Text>
+                  </View>
+                  <View style={styles.stepItem}>
+                    <View style={styles.stepNum}><Text style={styles.stepNumText}>2</Text></View>
+                    <Text style={styles.stepText}>
+                      Scroll down the options menu and select <Text style={styles.stepHighlight}>"Add to Home Screen"</Text>.
+                    </Text>
+                  </View>
+                  <View style={styles.stepItem}>
+                    <View style={styles.stepNum}><Text style={styles.stepNumText}>3</Text></View>
+                    <Text style={styles.stepText}>
+                      Tap <Text style={styles.stepHighlight}>"Add"</Text> in the top-right corner to complete the installation.
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                // Android Chrome / Others Steps
+                <View style={styles.stepsContainer}>
+                  <View style={styles.stepItem}>
+                    <View style={styles.stepNum}><Text style={styles.stepNumText}>1</Text></View>
+                    <Text style={styles.stepText}>
+                      Tap the browser menu icon (usually <Text style={styles.stepHighlight}>three vertical dots ⋮</Text> or the Share icon).
+                    </Text>
+                  </View>
+                  <View style={styles.stepItem}>
+                    <View style={styles.stepNum}><Text style={styles.stepNumText}>2</Text></View>
+                    <Text style={styles.stepText}>
+                      Select <Text style={styles.stepHighlight}>"Add to Home Screen"</Text> or <Text style={styles.stepHighlight}>"Install App"</Text> from the options.
+                    </Text>
+                  </View>
+                  <View style={styles.stepItem}>
+                    <View style={styles.stepNum}><Text style={styles.stepNumText}>3</Text></View>
+                    <Text style={styles.stepText}>
+                      Confirm the prompt to install the application to your home screen.
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              <TouchableOpacity style={styles.guideActionBtn} onPress={() => setShowInstallGuide(false)}>
+                <Text style={styles.guideActionText}>Got It</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Modal>
       </SafeAreaView>
@@ -1107,4 +1204,20 @@ const styles = StyleSheet.create({
   installPrimaryText: { fontSize: 14, fontFamily: 'Inter-Bold', color: '#ffffff' },
   installSecondaryBtn: { flex: 1, backgroundColor: '#f4f5f7', borderRadius: 14, height: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#eaecef' },
   installSecondaryText: { fontSize: 14, fontFamily: 'Inter-Bold', color: '#1c1e21' },
+
+  modalBgCenter: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.65)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  guidePanel: { backgroundColor: '#18181b', borderRadius: 28, padding: 28, width: '100%', maxWidth: 380, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 15 },
+  guideHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
+  guideLogo: { width: 36, height: 36, borderRadius: 10 },
+  guideTitle: { fontSize: 19, fontFamily: 'Inter-Bold', color: '#ffffff', flex: 1, letterSpacing: -0.5 },
+  guideClose: { padding: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20 },
+  guideIntro: { fontSize: 13, fontFamily: 'Inter-Medium', color: '#a1a1aa', lineHeight: 18, marginBottom: 20 },
+  stepsContainer: { gap: 16, marginBottom: 24 },
+  stepItem: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  stepNum: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#0ea5e9', alignItems: 'center', justifyContent: 'center' },
+  stepNumText: { fontSize: 12, fontFamily: 'Inter-Bold', color: '#ffffff' },
+  stepText: { fontSize: 13, fontFamily: 'Inter-Medium', color: '#e4e4e7', lineHeight: 18, flex: 1 },
+  stepHighlight: { color: '#0ea5e9', fontFamily: 'Inter-SemiBold' },
+  guideActionBtn: { backgroundColor: '#0ea5e9', borderRadius: 14, height: 48, alignItems: 'center', justifyContent: 'center', shadowColor: '#0ea5e9', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  guideActionText: { fontSize: 14, fontFamily: 'Inter-Bold', color: '#ffffff' },
 });

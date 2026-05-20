@@ -1,5 +1,4 @@
-import {
-  View,
+import { View,
   Text,
   StyleSheet,
   ScrollView,
@@ -8,12 +7,13 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { ArrowLeft, ChevronDown, ScanLine, ArrowUpRight, CheckCircle, Check } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, ScanLine, ArrowUpRight, CheckCircle, Check, X, Camera } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
@@ -22,6 +22,7 @@ import { CRYPTO_ASSETS } from '@/constants/crypto';
 import { recordWalletTransfer, loadWalletBalances } from '@/lib/supabase';
 import { isRippleWalletAddress } from '@/lib/wallet';
 import { useEffect } from 'react';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 export default function SendScreen() {
   const router = useRouter();
@@ -37,6 +38,15 @@ export default function SendScreen() {
   const [error, setError] = useState<string | null>(null);
   const [balances, setBalances] = useState<Record<string, number>>({});
   const [showPicker, setShowPicker] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [scanned, setScanned] = useState(false);
+
+  const handleBarcodeScanned = (data: string) => {
+    setScanned(true);
+    setAddress(data.trim());
+    setShowScanModal(false);
+  };
 
   useEffect(() => {
     async function fetchBalances() {
@@ -168,7 +178,13 @@ export default function SendScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
-                  <TouchableOpacity style={styles.scanBtn}>
+                  <TouchableOpacity 
+                    style={styles.scanBtn}
+                    onPress={() => {
+                      setScanned(false);
+                      setShowScanModal(true);
+                    }}
+                  >
                     <ScanLine size={18} color={theme.accent[400]} />
                   </TouchableOpacity>
                 </View>
@@ -295,6 +311,72 @@ export default function SendScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* ── Scan QR Modal ── */}
+      <Modal
+        visible={showScanModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowScanModal(false)}
+      >
+        <View style={styles.modalBg}>
+          <View style={[styles.modalContent, { backgroundColor: theme.bg.card }]}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text.primary }]}>
+                Scan Recipient Address QR
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowScanModal(false)}
+                style={[styles.closeBtn, { backgroundColor: theme.bg.primary }]}
+              >
+                <X size={18} color={theme.text.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+              <View style={styles.scannerWrapper}>
+                {/* Scanner */}
+                {permission?.granted ? (
+                  <View style={styles.scannerContainer}>
+                    <CameraView
+                      style={StyleSheet.absoluteFillObject}
+                      barcodeScannerSettings={{
+                        barcodeTypes: ['qr'],
+                      }}
+                      onBarcodeScanned={({ data }) => handleBarcodeScanned(data)}
+                    />
+                    <View style={styles.scannerOverlay}>
+                      <View style={styles.scannerFocusFrame} />
+                      <Text style={styles.scannerTip}>Align QR code within the frame</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.permissionContainer}>
+                    <Camera size={36} color={theme.text.muted} style={{ marginBottom: 12 }} />
+                    <Text style={[styles.permissionText, { color: theme.text.secondary }]}>
+                      Camera permission is required to scan QR codes.
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.permissionBtn, { backgroundColor: theme.accent[500] }]}
+                      onPress={requestPermission}
+                    >
+                      <Text style={styles.permissionBtnText}>Enable Camera</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Manual Fallback / Instruction */}
+                <View style={styles.manualInputWrapper}>
+                  <Text style={[styles.manualInputLabel, { color: theme.text.secondary }]}>
+                    Or paste/type the recipient address directly into the address input box on the Send screen.
+                  </Text>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -419,4 +501,22 @@ const styles = StyleSheet.create({
   swipeHandle: { position: 'absolute', left: 4, width: 50, height: 50, borderRadius: 25, backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5, justifyContent: 'center', alignItems: 'center', zIndex: 10 },
   swipeHandleInner: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#22c55e', justifyContent: 'center', alignItems: 'center' },
   swipeTrackText: { fontSize: 14, fontFamily: 'Inter-Bold', color: '#ffffff', opacity: 0.65 },
+
+  modalBg: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.65)', justifyContent: 'flex-end' },
+  modalContent: { borderTopLeftRadius: 28, borderTopRightRadius: 28, maxHeight: '90%', paddingBottom: Platform.OS === 'ios' ? 40 : 24 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.05)' },
+  modalTitle: { fontSize: 16, fontFamily: 'Inter-SemiBold' },
+  closeBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  modalScroll: { paddingHorizontal: 20, paddingVertical: 16 },
+  scannerWrapper: { alignItems: 'center' },
+  scannerContainer: { width: 250, height: 250, borderRadius: 24, overflow: 'hidden', position: 'relative', marginBottom: 20 },
+  scannerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.45)', alignItems: 'center', justifyContent: 'center' },
+  scannerFocusFrame: { width: 170, height: 170, borderRadius: 20, borderWidth: 2, borderColor: '#ffffff', backgroundColor: 'transparent' },
+  scannerTip: { color: '#ffffff', fontSize: 11, fontFamily: 'Inter-Medium', marginTop: 12 },
+  permissionContainer: { width: 250, height: 250, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)', alignItems: 'center', justifyContent: 'center', padding: 20, marginBottom: 20 },
+  permissionText: { fontSize: 12, fontFamily: 'Inter-Regular', textAlign: 'center', lineHeight: 18, marginBottom: 16 },
+  permissionBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10 },
+  permissionBtnText: { color: '#fff', fontSize: 12, fontFamily: 'Inter-Bold' },
+  manualInputWrapper: { width: '100%', marginTop: 10, alignItems: 'center' },
+  manualInputLabel: { fontSize: 12, fontFamily: 'Inter-Regular', textAlign: 'center', lineHeight: 18, color: '#94a3b8' },
 });
