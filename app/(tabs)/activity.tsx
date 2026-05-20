@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, TextInput, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, TextInput, Image, Modal, Platform, Clipboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
   ArrowUpRight,
@@ -11,11 +11,18 @@ import {
   XCircle,
   ChevronDown,
   Info,
+  ScanLine,
+  QrCode,
+  Copy,
+  Check,
+  X,
+  Camera,
 } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
-import { recordWalletTransfer, loadWalletBalances, supabase } from '@/lib/supabase';
+import { recordWalletTransfer, loadWalletBalances, loadUserTransactions, supabase } from '@/lib/supabase';
 import { CRYPTO_ASSETS } from '@/constants/crypto';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 const FILTERS = ['All', 'Received', 'Sent', 'Swaps'];
 
@@ -59,6 +66,22 @@ export default function ActivityScreen() {
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
   const [balances, setBalances] = useState<Record<string, number>>({});
+
+  // Scan & Send Modal States
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [scanModalMode, setScanModalMode] = useState<'select' | 'send' | 'receive'>('select');
+  const [scannedAddress, setScannedAddress] = useState('');
+  const [sendAsset, setSendAsset] = useState(CRYPTO_ASSETS[0]); // Default to XRP
+  const [sendAmount, setSendAmount] = useState('');
+  const [showSendAssetPicker, setShowSendAssetPicker] = useState(false);
+  const [sendSubmitting, setSendSubmitting] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendSuccess, setSendSuccess] = useState(false);
+  const [copiedReceive, setCopiedReceive] = useState(false);
+  const [scanned, setScanned] = useState(false);
+
+  // Camera permissions hook
+  const [permission, requestPermission] = useCameraPermissions();
 
   const fetchBalances = useCallback(async () => {
     if (!profile.wallet) return;
@@ -160,6 +183,64 @@ export default function ActivityScreen() {
     }
   };
 
+  const handleBarcodeScanned = (data: string) => {
+    if (scanned) return;
+    setScanned(true);
+    setScannedAddress(data.trim());
+    setScanModalMode('send');
+  };
+
+  const handleModalSend = async () => {
+    if (!profile.wallet) return;
+    const dest = scannedAddress.trim();
+    if (!dest) {
+      setSendError('Please enter a recipient address.');
+      return;
+    }
+    const val = parseFloat(sendAmount);
+    if (isNaN(val) || val <= 0) {
+      setSendError('Please enter a valid amount.');
+      return;
+    }
+
+    const available = balances[sendAsset.symbol.toUpperCase()] ?? 0;
+    if (val > available) {
+      setSendError(`Insufficient ${sendAsset.symbol} balance.`);
+      return;
+    }
+
+    setSendSubmitting(true);
+    setSendError(null);
+
+    try {
+      const res = await recordWalletTransfer({
+        fromWallet: profile.wallet.toLowerCase(),
+        toWallet: dest.toLowerCase(),
+        amount: val,
+        token: sendAsset.symbol,
+        note: `Sent via QR scanner`,
+      });
+
+      if (!res.ok) {
+        throw new Error(res.error?.message ?? 'Transfer failed.');
+      }
+
+      setSendSuccess(true);
+      setSendAmount('');
+      await Promise.all([fetchTransactions(), fetchBalances()]);
+    } catch (err: any) {
+      setSendError(err?.message ?? 'Failed to send transaction.');
+    } finally {
+      setSendSubmitting(false);
+    }
+  };
+
+  const handleCopyAddress = (addr: string) => {
+    Clipboard.setString(addr);
+    setCopiedReceive(true);
+    setTimeout(() => setCopiedReceive(false), 2000);
+  };
+
   const filtered = transactions.filter((t) => {
     const isReceive = t.to_wallet.toLowerCase() === profile.wallet.toLowerCase();
     const isSystem = t.from_wallet === 'system' || t.type === 'signup_bonus';
@@ -177,9 +258,25 @@ export default function ActivityScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent[500]} />}
       >
-        <Animated.View entering={FadeInDown.duration(400)}>
-          <Text style={[styles.pageTitle, { color: theme.text.primary }]}>Activity</Text>
-          <Text style={[styles.pageSub, { color: theme.text.secondary }]}>Transaction history</Text>
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.headerRow}>
+          <View>
+            <Text style={[styles.pageTitle, { color: theme.text.primary }]}>Activity</Text>
+            <Text style={[styles.pageSub, { color: theme.text.secondary }]}>Transaction history</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.scanHeaderBtn, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}
+            onPress={() => {
+              setScanModalMode('select');
+              setSendSuccess(false);
+              setSendError(null);
+              setScanned(false);
+              setScannedAddress('');
+              setSendAmount('');
+              setShowScanModal(true);
+            }}
+          >
+            <ScanLine size={20} color={theme.accent[400]} />
+          </TouchableOpacity>
         </Animated.View>
 
         {/* ── Quick Converter Card ── */}
@@ -305,6 +402,300 @@ export default function ActivityScreen() {
 
         <View style={styles.bottomPad} />
       </ScrollView>
+
+      {/* ── Scan QR & Send / Receive Modal ── */}
+      <Modal
+        visible={showScanModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowScanModal(false)}
+      >
+        <View style={styles.modalBg}>
+          <View style={[styles.modalContent, { backgroundColor: theme.bg.card }]}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text.primary }]}>
+                {scanModalMode === 'select' && 'Select Action'}
+                {scanModalMode === 'send' && 'Send Crypto (Scan QR)'}
+                {scanModalMode === 'receive' && 'Receive Crypto (Show QR)'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowScanModal(false)}
+                style={[styles.closeBtn, { backgroundColor: theme.bg.primary }]}
+              >
+                <X size={18} color={theme.text.primary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Content Selection */}
+            {scanModalMode === 'select' && (
+              <View style={styles.selectOptionsContainer}>
+                <TouchableOpacity
+                  style={[styles.optionCard, { backgroundColor: theme.bg.primary, borderColor: theme.bg.border }]}
+                  onPress={() => {
+                    setScanModalMode('send');
+                    setScanned(false);
+                    setScannedAddress('');
+                  }}
+                >
+                  <View style={[styles.optionIconContainer, { backgroundColor: theme.accent[500] + '15' }]}>
+                    <ScanLine size={24} color={theme.accent[400]} />
+                  </View>
+                  <Text style={[styles.optionLabel, { color: theme.text.primary }]}>Send Crypto</Text>
+                  <Text style={[styles.optionDesc, { color: theme.text.secondary }]}>Scan a recipient's XRP or crypto wallet address to send funds</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.optionCard, { backgroundColor: theme.bg.primary, borderColor: theme.bg.border }]}
+                  onPress={() => setScanModalMode('receive')}
+                >
+                  <View style={[styles.optionIconContainer, { backgroundColor: theme.success[500] + '15' }]}>
+                    <QrCode size={24} color={theme.success[400]} />
+                  </View>
+                  <Text style={[styles.optionLabel, { color: theme.text.primary }]}>Receive Crypto</Text>
+                  <Text style={[styles.optionDesc, { color: theme.text.secondary }]}>Display your unique XRP address and QR code to receive funds</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Mode: Receive */}
+            {scanModalMode === 'receive' && (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+                <View style={styles.qrContainerWrapper}>
+                  {/* Soft Rounded QR Code Grid */}
+                  <View style={[styles.modalQrBox, { backgroundColor: theme.isDark ? '#000000' : '#ffffff' }]}>
+                    <View style={styles.modalQrInner}>
+                      <View style={styles.modalQrGrid}>
+                        {Array.from({ length: 64 }).map((_, i) => (
+                          <View
+                            key={i}
+                            style={[
+                              styles.modalQrCell,
+                              { backgroundColor: getQRCellColor(i, 'XRP', theme.isDark ? theme.bg.primary : '#1f1b16') },
+                            ]}
+                          />
+                        ))}
+                      </View>
+                      <View style={[styles.modalQrLogo, { borderColor: theme.isDark ? '#111' : '#eee' }]}>
+                        <Image source={{ uri: CRYPTO_ASSETS[0].icon }} style={styles.modalQrLogoImg} />
+                      </View>
+                    </View>
+                    {/* Corners */}
+                    <View style={[styles.modalQrCorner, styles.modalQrTL, { borderColor: theme.bg.primary }]} />
+                    <View style={[styles.modalQrCorner, styles.modalQrTR, { borderColor: theme.bg.primary }]} />
+                    <View style={[styles.modalQrCorner, styles.modalQrBL, { borderColor: theme.bg.primary }]} />
+                    <View style={[styles.modalQrCorner, styles.modalQrBR, { borderColor: theme.bg.primary }]} />
+                  </View>
+
+                  <Text style={[styles.modalQrSubtitle, { color: theme.text.secondary }]}>
+                    Your unique XRP address
+                  </Text>
+
+                  {/* Ready to copy address card */}
+                  <View style={[styles.modalAddrCard, { backgroundColor: theme.bg.primary, borderColor: theme.bg.border }]}>
+                    <Text style={[styles.modalAddrText, { color: theme.text.primary }]} selectable>
+                      {profile.wallet}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleCopyAddress(profile.wallet)}
+                      style={[styles.modalAddrCopyBtn, { backgroundColor: copiedReceive ? theme.success[500] + '22' : theme.bg.card }]}
+                    >
+                      {copiedReceive ? <Check size={16} color={theme.success[400]} /> : <Copy size={16} color={theme.text.secondary} />}
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Notice */}
+                  <View style={[styles.modalNoticeCard, { backgroundColor: theme.warning[900] + '15', borderColor: theme.warning[700] + '22' }]}>
+                    <Info size={14} color={theme.warning[400]} />
+                    <Text style={[styles.modalNoticeText, { color: theme.text.secondary }]}>
+                      Share this XRP wallet address with another Wallex user. Only send XRP or compatible assets to this address.
+                    </Text>
+                  </View>
+                </View>
+              </ScrollView>
+            )}
+
+            {/* Mode: Send */}
+            {scanModalMode === 'send' && (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+                {sendSuccess ? (
+                  <View style={styles.successContainer}>
+                    <CheckCircle size={48} color={theme.success[400]} style={{ marginBottom: 12 }} />
+                    <Text style={[styles.successTitle, { color: theme.text.primary }]}>Sent Successfully!</Text>
+                    <Text style={[styles.successDesc, { color: theme.text.secondary }]}>
+                      Your transaction has been processed. The funds are on their way.
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.successBtn, { backgroundColor: theme.accent[500] }]}
+                      onPress={() => setShowScanModal(false)}
+                    >
+                      <Text style={styles.successBtnText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : !scannedAddress ? (
+                  <View style={styles.scannerWrapper}>
+                    {/* Scanner */}
+                    {permission?.granted ? (
+                      <View style={styles.scannerContainer}>
+                        <CameraView
+                          style={StyleSheet.absoluteFillObject}
+                          barcodeScannerSettings={{
+                            barcodeTypes: ['qr'],
+                          }}
+                          onBarcodeScanned={({ data }) => handleBarcodeScanned(data)}
+                        />
+                        <View style={styles.scannerOverlay}>
+                          <View style={styles.scannerFocusFrame} />
+                          <Text style={styles.scannerTip}>Align QR code within the frame</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.permissionContainer}>
+                        <Camera size={36} color={theme.text.muted} style={{ marginBottom: 12 }} />
+                        <Text style={[styles.permissionText, { color: theme.text.secondary }]}>
+                          Camera permission is required to scan QR codes.
+                        </Text>
+                        <TouchableOpacity
+                          style={[styles.permissionBtn, { backgroundColor: theme.accent[500] }]}
+                          onPress={requestPermission}
+                        >
+                          <Text style={styles.permissionBtnText}>Enable Camera</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {/* Manual Fallback for Simulator / Web without camera */}
+                    <View style={styles.manualInputWrapper}>
+                      <Text style={[styles.manualInputLabel, { color: theme.text.secondary }]}>
+                        Or enter recipient address manually:
+                      </Text>
+                      <View style={[styles.manualInputRow, { borderColor: theme.bg.border }]}>
+                        <TextInput
+                          style={[styles.manualInput, { color: theme.text.primary }]}
+                          placeholder="Paste or type address..."
+                          placeholderTextColor={theme.text.muted}
+                          value={scannedAddress}
+                          onChangeText={setScannedAddress}
+                        />
+                        {scannedAddress.trim().length > 0 && (
+                          <TouchableOpacity
+                            style={[styles.manualInputGoBtn, { backgroundColor: theme.accent[500] }]}
+                            onPress={() => setScanModalMode('send')}
+                          >
+                            <ArrowUpRight size={16} color="#fff" />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.sendFormContainer}>
+                    {/* Recipient Details */}
+                    <Text style={[styles.sendFormLabel, { color: theme.text.secondary }]}>Recipient Address</Text>
+                    <View style={[styles.scannedAddrCard, { backgroundColor: theme.bg.primary, borderColor: theme.bg.border }]}>
+                      <Text style={[styles.scannedAddrText, { color: theme.text.primary }]}>{scannedAddress}</Text>
+                      <TouchableOpacity
+                        style={styles.scannedAddrClearBtn}
+                        onPress={() => {
+                          setScannedAddress('');
+                          setScanned(false);
+                        }}
+                      >
+                        <X size={16} color={theme.text.secondary} />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Asset Selector */}
+                    <Text style={[styles.sendFormLabel, { color: theme.text.secondary, marginTop: 12 }]}>Asset</Text>
+                    <TouchableOpacity
+                      style={[styles.sendAssetSelector, { backgroundColor: theme.bg.primary, borderColor: theme.bg.border }]}
+                      onPress={() => setShowSendAssetPicker(!showSendAssetPicker)}
+                    >
+                      <Image source={{ uri: sendAsset.icon }} style={styles.sendAssetIcon} />
+                      <Text style={[styles.sendAssetSymbol, { color: theme.text.primary }]}>{sendAsset.symbol}</Text>
+                      <ChevronDown size={14} color={theme.text.secondary} />
+                    </TouchableOpacity>
+
+                    {showSendAssetPicker && (
+                      <View style={[styles.sendAssetPicker, { backgroundColor: theme.bg.elevated || theme.bg.card, borderColor: theme.bg.border }]}>
+                        {CRYPTO_ASSETS.map((a) => (
+                          <TouchableOpacity
+                            key={a.id}
+                            style={styles.sendAssetPickerItem}
+                            onPress={() => {
+                              setSendAsset(a);
+                              setShowSendAssetPicker(false);
+                            }}
+                          >
+                            <Image source={{ uri: a.icon }} style={styles.sendAssetPickerIcon} />
+                            <Text style={[styles.sendAssetPickerText, { color: theme.text.primary }]}>{a.symbol}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Amount Input */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, marginBottom: 6 }}>
+                      <Text style={[styles.sendFormLabel, { color: theme.text.secondary }]}>Amount</Text>
+                      <Text
+                        style={styles.sendMaxHelper}
+                        onPress={() => setSendAmount((balances[sendAsset.symbol.toUpperCase()] ?? 0).toString())}
+                      >
+                        Max: {(balances[sendAsset.symbol.toUpperCase()] ?? 0).toFixed(4)} {sendAsset.symbol}
+                      </Text>
+                    </View>
+                    <View style={[styles.sendAmountWrapper, { backgroundColor: theme.bg.primary, borderColor: theme.bg.border }]}>
+                      <TextInput
+                        style={[styles.sendAmountInput, { color: theme.text.primary }]}
+                        placeholder="0.00"
+                        placeholderTextColor={theme.text.muted}
+                        value={sendAmount}
+                        onChangeText={setSendAmount}
+                        keyboardType="decimal-pad"
+                      />
+                      <Text style={[styles.sendAmountSymbol, { color: theme.text.secondary }]}>{sendAsset.symbol}</Text>
+                    </View>
+
+                    {/* USD Estimate */}
+                    {parseFloat(sendAmount || '0') > 0 && (
+                      <Text style={[styles.sendEstimateText, { color: theme.text.muted }]}>
+                        ~ ${(parseFloat(sendAmount) * sendAsset.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                      </Text>
+                    )}
+
+                    {/* Loss Warning notice */}
+                    <View style={[styles.modalWarningCard, { backgroundColor: theme.error[900] + '15', borderColor: theme.error[700] + '22' }]}>
+                      <Info size={14} color={theme.error[400]} />
+                      <Text style={[styles.modalWarningText, { color: theme.text.secondary }]}>
+                        Notice: Wallex only supports transfers to registered Wallex wallets. Sending funds to external or unregistered addresses will result in permanent loss.
+                      </Text>
+                    </View>
+
+                    {/* Status Box */}
+                    {sendError && (
+                      <View style={[styles.statusBox, styles.statusError, { marginTop: 14 }]}>
+                        <Info size={14} color="#ef4444" />
+                        <Text style={[styles.statusText, { color: '#ef4444' }]}>{sendError}</Text>
+                      </View>
+                    )}
+
+                    {/* Send Button */}
+                    <TouchableOpacity
+                      style={[styles.modalSendBtn, sendSubmitting && { opacity: 0.7 }]}
+                      onPress={handleModalSend}
+                      disabled={sendSubmitting}
+                    >
+                      <Text style={styles.modalSendBtnText}>
+                        {sendSubmitting ? 'Sending...' : `Send ${sendAsset.symbol}`}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -449,6 +840,472 @@ const styles = StyleSheet.create({
   txMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
   txTime: { fontSize: 11, fontFamily: 'Inter-Regular' },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
-  statusText: { fontSize: 10, fontFamily: 'Inter-SemiBold' },
+  badgeText: { fontSize: 10, fontFamily: 'Inter-SemiBold' },
   bottomPad: { height: 120 },
+
+  // New QR & Send Modal Styles
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  scanHeaderBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  modalBg: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '90%',
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectOptionsContainer: {
+    padding: 20,
+    gap: 16,
+  },
+  optionCard: {
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+  },
+  optionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  optionLabel: {
+    fontSize: 15,
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 4,
+  },
+  optionDesc: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 18,
+  },
+  modalScroll: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  qrContainerWrapper: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  modalQrBox: {
+    width: 220,
+    height: 220,
+    borderRadius: 20,
+    padding: 12,
+    position: 'relative',
+    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
+    elevation: 5,
+  },
+  modalQrInner: {
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalQrGrid: {
+    width: 180,
+    height: 180,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  modalQrCell: {
+    width: 180 / 8,
+    height: 180 / 8,
+    borderRadius: 6, // Soft rounded cell
+  },
+  modalQrLogo: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
+  modalQrLogoImg: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+  },
+  modalQrCorner: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+  },
+  modalQrTL: {
+    top: 6,
+    left: 6,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomWidth: 0,
+    borderRightWidth: 0,
+  },
+  modalQrTR: {
+    top: 6,
+    right: 6,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderBottomWidth: 0,
+    borderLeftWidth: 0,
+  },
+  modalQrBL: {
+    bottom: 6,
+    left: 6,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderTopWidth: 0,
+    borderRightWidth: 0,
+  },
+  modalQrBR: {
+    bottom: 6,
+    right: 6,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
+  },
+  modalQrSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  modalAddrCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 8,
+    paddingLeft: 14,
+    width: '100%',
+    marginBottom: 16,
+    gap: 8,
+  },
+  modalAddrText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+  },
+  modalAddrCopyBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalNoticeCard: {
+    flexDirection: 'row',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    gap: 8,
+    alignItems: 'flex-start',
+  },
+  modalNoticeText: {
+    flex: 1,
+    fontSize: 11,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 16,
+  },
+  successContainer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+  },
+  successTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    marginBottom: 8,
+  },
+  successDesc: {
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  successBtn: {
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+  },
+  scannerWrapper: {
+    alignItems: 'center',
+  },
+  scannerContainer: {
+    width: 250,
+    height: 250,
+    borderRadius: 24,
+    overflow: 'hidden',
+    position: 'relative',
+    marginBottom: 20,
+  },
+  scannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scannerFocusFrame: {
+    width: 170,
+    height: 170,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    backgroundColor: 'transparent',
+  },
+  scannerTip: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontFamily: 'Inter-Medium',
+    marginTop: 12,
+  },
+  permissionContainer: {
+    width: 250,
+    height: 250,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    marginBottom: 20,
+  },
+  permissionText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  permissionBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  permissionBtnText: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+  },
+  manualInputWrapper: {
+    width: '100%',
+    marginTop: 10,
+  },
+  manualInputLabel: {
+    fontSize: 11,
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 8,
+  },
+  manualInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingRight: 6,
+    height: 48,
+  },
+  manualInput: {
+    flex: 1,
+    paddingHorizontal: 14,
+    fontSize: 13,
+    fontFamily: 'Inter-Regular',
+    height: '100%',
+  },
+  manualInputGoBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendFormContainer: {
+    width: '100%',
+  },
+  sendFormLabel: {
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  scannedAddrCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  scannedAddrText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+  },
+  scannedAddrClearBtn: {
+    padding: 4,
+  },
+  sendAssetSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    gap: 8,
+  },
+  sendAssetIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  sendAssetSymbol: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: 'Inter-Bold',
+  },
+  sendAssetPicker: {
+    position: 'absolute',
+    top: 135,
+    left: 0,
+    right: 0,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 6,
+    zIndex: 150,
+    gap: 4,
+  },
+  sendAssetPickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    gap: 8,
+  },
+  sendAssetPickerIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  sendAssetPickerText: {
+    fontSize: 13,
+    fontFamily: 'Inter-Bold',
+  },
+  sendMaxHelper: {
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
+    color: '#3b82f6',
+  },
+  sendAmountWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingRight: 14,
+  },
+  sendAmountInput: {
+    flex: 1,
+    paddingHorizontal: 14,
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    height: '100%',
+  },
+  sendAmountSymbol: {
+    fontSize: 13,
+    fontFamily: 'Inter-Bold',
+  },
+  sendEstimateText: {
+    fontSize: 11,
+    fontFamily: 'Inter-Medium',
+    marginTop: 6,
+    marginLeft: 2,
+  },
+  modalWarningCard: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 10,
+    gap: 8,
+    alignItems: 'flex-start',
+    marginTop: 14,
+  },
+  modalWarningText: {
+    flex: 1,
+    fontSize: 10,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 15,
+  },
+  modalSendBtn: {
+    backgroundColor: '#111318',
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  modalSendBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontFamily: 'Inter-Bold',
+  },
 });
+
+function getQRCellColor(i: number, symbol: string, cellColor: string): string {
+  const seed = (i * 7 + symbol.charCodeAt(0)) % 13;
+  return seed < 7 ? cellColor : 'transparent';
+}
