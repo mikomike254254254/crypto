@@ -66,22 +66,14 @@ type WalletRow = {
   balances?: Array<{ token: string; amount: number }>;
 };
 
-const DEMO_SUMMARY: AdminSummary = {
-  userCount: 1284,
-  pendingKyc: 12,
-  banCount: 3,
-  xrpAwarded: 24890,
-  wallets: [
-    { wallet: 'rAmina7KQ3p2s9Lm4XRPn8cW6tY1zB5', email: 'amina@example.com', full_name: 'Amina K', kyc_status: 'pending', balances: [{ token: 'XRP', amount: 120 }] },
-    { wallet: 'rMichael9Wv4m6sXRP2q8Lc5Tn1pK7z', email: 'michael@example.com', full_name: 'Michael A', kyc_status: 'approved', balances: [{ token: 'XRP', amount: 340 }, { token: 'BTC', amount: 0.01 }] },
-  ],
-  transactions: [
-    { id: 'demo-1', from_wallet: 'wallex', to_wallet: 'rAmina7KQ3p2s9Lm4XRPn8cW6tY1zB5', amount: 80, token: 'XRP', type: 'award' },
-    { id: 'demo-2', from_wallet: 'rMichael9Wv4m6sXRP2q8Lc5Tn1pK7z', to_wallet: 'rAmina7KQ3p2s9Lm4XRPn8cW6tY1zB5', amount: 25, token: 'XRP', type: 'transfer' },
-  ],
-  kycSubmissions: [
-    { id: 'kyc-1', wallet: 'rAmina7KQ3p2s9Lm4XRPn8cW6tY1zB5', email: 'amina@example.com', full_name: 'Amina K', id_type: 'National ID', status: 'pending' },
-  ],
+const EMPTY_SUMMARY: AdminSummary = {
+  userCount: 0,
+  pendingKyc: 0,
+  banCount: 0,
+  xrpAwarded: 0,
+  wallets: [],
+  transactions: [],
+  kycSubmissions: [],
 };
 
 export default function AdminScreen() {
@@ -90,7 +82,7 @@ export default function AdminScreen() {
   const [sessionToken, setSessionToken] = useState('');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
-  const [summary, setSummary] = useState<AdminSummary>(DEMO_SUMMARY);
+  const [summary, setSummary] = useState<AdminSummary>(EMPTY_SUMMARY);
   const [wallet, setWallet] = useState('');
   const [amount, setAmount] = useState('');
   const [tokenSymbol, setTokenSymbol] = useState('XRP');
@@ -100,7 +92,7 @@ export default function AdminScreen() {
   const [banWallet, setBanWallet] = useState('');
   const [promoteEmail, setPromoteEmail] = useState('');
   const [message, setMessage] = useState('');
-  const [status, setStatus] = useState('Demo data loaded');
+  const [status, setStatus] = useState('Awaiting connection...');
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
 
@@ -127,8 +119,6 @@ export default function AdminScreen() {
   };
 
   const adminFetch = async (body?: Record<string, unknown>) => {
-    if (sessionToken === 'demo-local') return body ? { ok: true } : summary;
-
     const response = await fetch(`${apiBase}/api/admin`, {
       method: body ? 'POST' : 'GET',
       headers: {
@@ -164,111 +154,9 @@ export default function AdminScreen() {
     if (!sessionToken) return;
     setLoading(true);
     try {
-      if (sessionToken === 'demo-local') {
-        const action = body.action as string;
-        setSummary(prev => {
-          const next = { ...prev };
-          
-          if (action === 'setBalance') {
-            const walletToEdit = body.wallet as string;
-            const tokenToEdit = body.token as string;
-            const amtToEdit = Number(body.amount);
-            
-            if (next.wallets) {
-              next.wallets = next.wallets.map(w => {
-                if (w.wallet.toLowerCase() === walletToEdit.toLowerCase()) {
-                  const hasToken = w.balances?.some(b => b.token === tokenToEdit);
-                  let nextBalances = w.balances ?? [];
-                  if (hasToken) {
-                    nextBalances = nextBalances.map(b => 
-                      b.token === tokenToEdit ? { ...b, amount: amtToEdit } : b
-                    );
-                  } else {
-                    nextBalances = [...nextBalances, { token: tokenToEdit, amount: amtToEdit }];
-                  }
-                  return { ...w, balances: nextBalances };
-                }
-                return w;
-              });
-            }
-          }
-          
-          else if (action === 'award') {
-            const destWallet = body.wallet as string;
-            const awardToken = body.token as string;
-            const awardAmt = Number(body.amount);
-            
-            if (awardToken === 'XRP') {
-              next.xrpAwarded = (next.xrpAwarded ?? 0) + awardAmt;
-            }
-            
-            const newTx = {
-              id: `demo-${Date.now()}`,
-              from_wallet: 'wallex',
-              to_wallet: destWallet,
-              amount: awardAmt,
-              token: awardToken,
-              type: 'award',
-            };
-            next.transactions = [newTx, ...next.transactions];
-            
-            if (next.wallets) {
-              next.wallets = next.wallets.map(w => {
-                if (w.wallet.toLowerCase() === destWallet.toLowerCase()) {
-                  const hasToken = w.balances?.some(b => b.token === awardToken);
-                  let nextBalances = w.balances ?? [];
-                  if (hasToken) {
-                    nextBalances = nextBalances.map(b => 
-                      b.token === awardToken ? { ...b, amount: b.amount + awardAmt } : b
-                    );
-                  } else {
-                    nextBalances = [...nextBalances, { token: awardToken, amount: awardAmt }];
-                  }
-                  return { ...w, balances: nextBalances };
-                }
-                return w;
-              });
-            }
-          }
-          
-          else if (action === 'approveKyc') {
-            const kycWallet = body.wallet as string;
-            const kycStatus = body.status as string;
-            
-            if (next.kycSubmissions) {
-              next.kycSubmissions = next.kycSubmissions.filter(s => s.wallet.toLowerCase() !== kycWallet.toLowerCase());
-            }
-            if (next.wallets) {
-              next.wallets = next.wallets.map(w => 
-                w.wallet.toLowerCase() === kycWallet.toLowerCase() ? { ...w, kyc_status: kycStatus } : w
-              );
-            }
-            next.pendingKyc = Math.max(0, next.pendingKyc - 1);
-          }
-          
-          else if (action === 'ban') {
-            const walletToBan = body.wallet as string;
-            if (next.wallets) {
-              next.wallets = next.wallets.filter(w => w.wallet.toLowerCase() !== walletToBan.toLowerCase());
-            }
-            next.banCount = (next.banCount ?? 0) + 1;
-            if (next.kycSubmissions) {
-              next.kycSubmissions = next.kycSubmissions.filter(s => s.wallet.toLowerCase() !== walletToBan.toLowerCase());
-            }
-          }
-          
-          else if (action === 'promoteAdmin') {
-            next.userCount = Math.max(0, next.userCount + 1);
-          }
-          
-          return next;
-        });
-        setStatus(success);
-      } else {
-        await adminFetch(body);
-        setStatus(success);
-        await loadSummary();
-      }
+      await adminFetch(body);
+      setStatus(success);
+      await loadSummary();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Action failed');
     } finally {
@@ -294,18 +182,6 @@ export default function AdminScreen() {
           <TouchableOpacity style={[styles.loginBtn, { backgroundColor: theme.accent[500] }]} onPress={login} disabled={loading}>
             <Lock size={17} color="#fff" />
             <Text style={styles.loginBtnText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.adminCredentialsHelper} 
-            onPress={() => {
-              setAuthEmail('admin@wallex.online');
-              setAuthPassword('wallex-admin');
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.adminCredentialsText, { color: theme.text.secondary }]}>
-              🔑 Default: <Text style={{ color: theme.accent[400], textDecorationLine: 'underline', fontFamily: 'Inter-SemiBold' }}>admin@wallex.online / wallex-admin</Text> (Autofill)
-            </Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
