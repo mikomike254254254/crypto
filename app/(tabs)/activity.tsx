@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, TextInput, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect, useCallback } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -9,12 +9,23 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  ChevronDown,
+  Info,
 } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
-import { loadUserTransactions } from '@/lib/supabase';
+import { recordWalletTransfer, loadWalletBalances, supabase } from '@/lib/supabase';
+import { CRYPTO_ASSETS } from '@/constants/crypto';
 
 const FILTERS = ['All', 'Received', 'Sent', 'Swaps'];
+
+const COIN_METADATA_PRICES: Record<string, number> = {
+  BTC: 67420.10,
+  ETH: 3512.40,
+  USDT: 1.00,
+  XRP: 0.601,
+  SOL: 148.22,
+};
 
 function timeAgo(date: Date): string {
   const diff = Date.now() - date.getTime();
@@ -39,6 +50,30 @@ export default function ActivityScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Quick Converter States
+  const [fromAsset, setFromAsset] = useState(CRYPTO_ASSETS[3]); // Default XRP
+  const [toAsset, setToAsset] = useState(CRYPTO_ASSETS[2]); // Default USDT
+  const [fromAmount, setFromAmount] = useState('');
+  const [convStatus, setConvStatus] = useState<string | null>(null);
+  const [convLoading, setConvLoading] = useState(false);
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
+  const [balances, setBalances] = useState<Record<string, number>>({});
+
+  const fetchBalances = useCallback(async () => {
+    if (!profile.wallet) return;
+    try {
+      const bList = await loadWalletBalances(profile.wallet.toLowerCase());
+      const bMap: Record<string, number> = {};
+      bList.forEach(item => {
+        bMap[item.token.toUpperCase()] = item.amount;
+      });
+      setBalances(bMap);
+    } catch (err) {
+      console.error('Failed to load wallet balances in activity screen:', err);
+    }
+  }, [profile.wallet]);
+
   const fetchTransactions = useCallback(async () => {
     if (!profile?.wallet) return;
     try {
@@ -53,13 +88,77 @@ export default function ActivityScreen() {
 
   useEffect(() => {
     fetchTransactions();
-  }, [fetchTransactions]);
+    fetchBalances();
+  }, [fetchTransactions, fetchBalances]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchTransactions();
+    await Promise.all([fetchTransactions(), fetchBalances()]);
     setRefreshing(false);
-  }, [fetchTransactions]);
+  }, [fetchTransactions, fetchBalances]);
+
+  const sourceBalance = balances[fromAsset.symbol.toUpperCase()] ?? 0;
+  const sourceAmountVal = parseFloat(fromAmount || '0');
+  
+  // Calculate exchange rate
+  // rate = fromPrice / toPrice
+  const exchangeRate = fromAsset.price / toAsset.price;
+  const toAmountEst = sourceAmountVal * exchangeRate;
+
+  const handleConvert = async () => {
+    if (!profile.wallet) return;
+    if (fromAsset.id === toAsset.id) {
+      setConvStatus('Cannot convert an asset to itself.');
+      return;
+    }
+    if (sourceAmountVal <= 0) {
+      setConvStatus('Please enter a valid amount.');
+      return;
+    }
+    if (sourceAmountVal > sourceBalance) {
+      setConvStatus(`Insufficient ${fromAsset.symbol} balance.`);
+      return;
+    }
+
+    setConvLoading(true);
+    setConvStatus(null);
+
+    try {
+      // Step 1: Record Debit of fromAsset (Transferring to 'system')
+      const debitRes = await recordWalletTransfer({
+        fromWallet: profile.wallet.toLowerCase(),
+        toWallet: 'system',
+        amount: sourceAmountVal,
+        token: fromAsset.symbol,
+        note: `Convert ${fromAsset.symbol} to ${toAsset.symbol}`,
+      });
+
+      if (!debitRes.ok) {
+        throw new Error(debitRes.error?.message ?? 'Conversion debit failed.');
+      }
+
+      // Step 2: Record Credit of toAsset (Transferring from 'system')
+      const creditRes = await recordWalletTransfer({
+        fromWallet: 'system',
+        toWallet: profile.wallet.toLowerCase(),
+        amount: toAmountEst,
+        token: toAsset.symbol,
+        note: `Converted from ${fromAsset.symbol}`,
+      });
+
+      if (!creditRes.ok) {
+        throw new Error(creditRes.error?.message ?? 'Conversion credit failed.');
+      }
+
+      setConvStatus(`Successfully converted ${sourceAmountVal.toFixed(4)} ${fromAsset.symbol} to ${toAmountEst.toFixed(4)} ${toAsset.symbol}!`);
+      setFromAmount('');
+      await Promise.all([fetchTransactions(), fetchBalances()]);
+    } catch (err: any) {
+      setConvStatus(err?.message ?? 'Conversion failed. Please try again.');
+    } finally {
+      setConvLoading(false);
+    }
+  };
 
   const filtered = transactions.filter((t) => {
     const isReceive = t.to_wallet.toLowerCase() === profile.wallet.toLowerCase();
@@ -83,7 +182,100 @@ export default function ActivityScreen() {
           <Text style={[styles.pageSub, { color: theme.text.secondary }]}>Transaction history</Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(60).duration(400)} style={styles.filterRow}>
+        {/* ── Quick Converter Card ── */}
+        <Animated.View entering={FadeInDown.delay(40).duration(400)} style={[styles.converterCard, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
+          <Text style={[styles.converterTitle, { color: theme.text.primary }]}>Quick Converter</Text>
+          <Text style={[styles.converterDesc, { color: theme.text.secondary }]}>Convert assets instantly with zero slippage</Text>
+
+          <View style={styles.convRow}>
+            {/* FROM ASSET */}
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.convLabel, { color: theme.text.muted }]}>FROM</Text>
+              <TouchableOpacity style={[styles.convSelector, { backgroundColor: theme.bg.primary, borderColor: theme.bg.border }]} onPress={() => { setShowFromPicker(!showFromPicker); setShowToPicker(false); }}>
+                <Image source={{ uri: fromAsset.icon }} style={styles.convIcon} />
+                <Text style={[styles.convSymbol, { color: theme.text.primary }]}>{fromAsset.symbol}</Text>
+                <ChevronDown size={14} color={theme.text.secondary} />
+              </TouchableOpacity>
+              {showFromPicker && (
+                <View style={[styles.inlinePicker, { backgroundColor: theme.bg.elevated || theme.bg.card, borderColor: theme.bg.border }]}>
+                  {CRYPTO_ASSETS.map((a) => (
+                    <TouchableOpacity key={a.id} style={styles.inlinePickerItem} onPress={() => { setFromAsset(a); setShowFromPicker(false); }}>
+                      <Image source={{ uri: a.icon }} style={styles.inlinePickerIcon} />
+                      <Text style={[styles.inlinePickerText, { color: theme.text.primary }]}>{a.symbol}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* SWAP ICON */}
+            <View style={styles.swapIconContainer}>
+              <RefreshCw size={16} color={theme.accent[400]} />
+            </View>
+
+            {/* TO ASSET */}
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.convLabel, { color: theme.text.muted }]}>TO</Text>
+              <TouchableOpacity style={[styles.convSelector, { backgroundColor: theme.bg.primary, borderColor: theme.bg.border }]} onPress={() => { setShowToPicker(!showToPicker); setShowFromPicker(false); }}>
+                <Image source={{ uri: toAsset.icon }} style={styles.convIcon} />
+                <Text style={[styles.convSymbol, { color: theme.text.primary }]}>{toAsset.symbol}</Text>
+                <ChevronDown size={14} color={theme.text.secondary} />
+              </TouchableOpacity>
+              {showToPicker && (
+                <View style={[styles.inlinePicker, { backgroundColor: theme.bg.elevated || theme.bg.card, borderColor: theme.bg.border }]}>
+                  {CRYPTO_ASSETS.map((a) => (
+                    <TouchableOpacity key={a.id} style={styles.inlinePickerItem} onPress={() => { setToAsset(a); setShowToPicker(false); }}>
+                      <Image source={{ uri: a.icon }} style={styles.inlinePickerIcon} />
+                      <Text style={[styles.inlinePickerText, { color: theme.text.primary }]}>{a.symbol}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* INPUT & ESTIMATE */}
+          <View style={{ marginTop: 14 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Text style={[styles.convLabel, { color: theme.text.muted }]}>AMOUNT</Text>
+              <Text style={styles.balanceHelper} onPress={() => setFromAmount(sourceBalance.toString())}>
+                Max: {sourceBalance.toFixed(4)} {fromAsset.symbol}
+              </Text>
+            </View>
+            <View style={[styles.convInputWrapper, { backgroundColor: theme.bg.primary, borderColor: theme.bg.border }]}>
+              <TextInput
+                style={[styles.convInput, { color: theme.text.primary }]}
+                placeholder="0.00"
+                placeholderTextColor={theme.text.muted}
+                value={fromAmount}
+                onChangeText={setFromAmount}
+                keyboardType="decimal-pad"
+              />
+              <Text style={[styles.convInputSymbol, { color: theme.text.secondary }]}>{fromAsset.symbol}</Text>
+            </View>
+            {sourceAmountVal > 0 && (
+              <Text style={[styles.convEstimate, { color: theme.text.secondary }]}>
+                ~ Estimated Receive: <Text style={{ fontFamily: 'Inter-Bold', color: theme.text.primary }}>{toAmountEst.toFixed(6)} {toAsset.symbol}</Text>
+              </Text>
+            )}
+          </View>
+
+          {/* Status Message */}
+          {convStatus && (
+            <View style={[styles.statusBox, convStatus.toLowerCase().includes('success') ? styles.statusSuccess : styles.statusError]}>
+              <Info size={14} color={convStatus.toLowerCase().includes('success') ? '#22c55e' : '#ef4444'} />
+              <Text style={[styles.statusText, { color: convStatus.toLowerCase().includes('success') ? '#22c55e' : '#ef4444' }]}>{convStatus}</Text>
+            </View>
+          )}
+
+          {/* BUTTON */}
+          <TouchableOpacity style={[styles.convBtn, convLoading && { opacity: 0.7 }]} onPress={handleConvert} disabled={convLoading}>
+            <Text style={styles.convBtnText}>{convLoading ? 'Converting...' : 'Convert Instantly'}</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* ── Filter Row ── */}
+        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.filterRow}>
           {FILTERS.map((f) => (
             <TouchableOpacity
               key={f}
@@ -105,7 +297,7 @@ export default function ActivityScreen() {
           </View>
         ) : (
           filtered.map((tx, i) => (
-            <Animated.View key={tx.id || i} entering={FadeInDown.delay(100 + i * 50).duration(350)}>
+            <Animated.View key={tx.id || i} entering={FadeInDown.delay(120 + i * 50).duration(350)}>
               <TxCard tx={tx} wallet={profile.wallet} theme={theme} />
             </Animated.View>
           ))
@@ -132,13 +324,6 @@ function TxCard({ tx, wallet, theme }: { tx: any; wallet: string; theme: any }) 
   const sign = (isReceive || isSystem) ? '+' : '-';
   const amountColor = (isReceive || isSystem) ? theme.success[400] : theme.text.primary;
 
-  const COIN_METADATA_PRICES: Record<string, number> = {
-    BTC: 67420.10,
-    ETH: 3512.40,
-    USDT: 1.00,
-    XRP: 0.601,
-    SOL: 148.22,
-  };
   const price = COIN_METADATA_PRICES[tx.token.toUpperCase()] ?? 1.00;
   const amountVal = Number(tx.amount);
   const usdValue = amountVal * price;
@@ -217,6 +402,36 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, paddingTop: 12 },
   pageTitle: { fontSize: 26, fontFamily: 'Inter-Bold', marginBottom: 4 },
   pageSub: { fontSize: 13, fontFamily: 'Inter-Regular', marginBottom: 20 },
+  
+  // Quick Converter Card Styles
+  converterCard: { borderRadius: 20, padding: 18, borderWidth: 1, marginBottom: 20 },
+  converterTitle: { fontSize: 16, fontFamily: 'Inter-Bold', marginBottom: 2 },
+  converterDesc: { fontSize: 11, fontFamily: 'Inter-Medium', marginBottom: 16 },
+  convRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, position: 'relative' },
+  convLabel: { fontSize: 9, fontFamily: 'Inter-Bold', letterSpacing: 0.5, marginBottom: 6 },
+  convSelector: { flexDirection: 'row', alignItems: 'center', height: 44, borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, gap: 6 },
+  convIcon: { width: 18, height: 18, borderRadius: 9 },
+  convSymbol: { fontSize: 13, fontFamily: 'Inter-Bold', flex: 1 },
+  swapIconContainer: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#f1f3f5', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  inlinePicker: { position: 'absolute', top: 48, left: 0, width: 120, borderRadius: 10, borderWidth: 1, overflow: 'hidden', zIndex: 100 },
+  inlinePickerItem: { flexDirection: 'row', alignItems: 'center', padding: 8, gap: 8, borderBottomWidth: 1, borderBottomColor: '#f1f3f5' },
+  inlinePickerIcon: { width: 16, height: 16, borderRadius: 8 },
+  inlinePickerText: { fontSize: 12, fontFamily: 'Inter-Bold' },
+  
+  balanceHelper: { fontSize: 10, fontFamily: 'Inter-Bold', color: '#3b82f6', marginBottom: 6 },
+  convInputWrapper: { flexDirection: 'row', alignItems: 'center', height: 48, borderRadius: 10, borderWidth: 1, paddingRight: 12 },
+  convInput: { flex: 1, paddingHorizontal: 12, fontSize: 16, fontFamily: 'Inter-Bold', height: '100%' },
+  convInputSymbol: { fontSize: 13, fontFamily: 'Inter-Bold' },
+  convEstimate: { fontSize: 11, fontFamily: 'Inter-Medium', marginTop: 6, marginLeft: 2 },
+  convBtn: { backgroundColor: '#111318', height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 14 },
+  convBtnText: { color: '#ffffff', fontSize: 13, fontFamily: 'Inter-Bold' },
+
+  statusBox: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, borderRadius: 8, marginTop: 12 },
+  statusSuccess: { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#dcfce7' },
+  statusError: { backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fee2e2' },
+  statusText: { fontSize: 11, fontFamily: 'Inter-Bold', flex: 1 },
+
+  // Filters
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   filterTab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
   filterText: { fontSize: 13, fontFamily: 'Inter-Medium' },

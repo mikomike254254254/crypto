@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { ArrowLeft, ChevronDown, ScanLine, ArrowUpRight, CheckCircle } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, ScanLine, ArrowUpRight, CheckCircle, Check } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
@@ -36,6 +36,7 @@ export default function SendScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [balances, setBalances] = useState<Record<string, number>>({});
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     async function fetchBalances() {
@@ -121,7 +122,10 @@ export default function SendScreen() {
             <>
               <Animated.View entering={FadeInDown.delay(60).duration(400)}>
                 <Text style={[styles.label, { color: theme.text.secondary }]}>Asset</Text>
-                <TouchableOpacity style={[styles.assetSelector, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
+                <TouchableOpacity 
+                  style={[styles.assetSelector, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}
+                  onPress={() => setShowPicker(!showPicker)}
+                >
                   <View style={[styles.assetIconBg, { backgroundColor: (CryptoColors[selectedAsset.symbol]?.primary ?? theme.primary[500]) + '22' }]}>
                     <Image source={{ uri: selectedAsset.icon }} style={styles.assetIcon} />
                   </View>
@@ -133,6 +137,23 @@ export default function SendScreen() {
                   </View>
                   <ChevronDown size={18} color={theme.text.secondary} />
                 </TouchableOpacity>
+
+                {showPicker && (
+                  <View style={[styles.picker, { backgroundColor: theme.bg.elevated || theme.bg.card, borderColor: theme.bg.border }]}>
+                    {CRYPTO_ASSETS.map((a) => (
+                      <TouchableOpacity
+                        key={a.id}
+                        style={[styles.pickerItem, { borderBottomColor: theme.bg.border }, selectedAsset.id === a.id && { backgroundColor: theme.accent[500] + '11' }]}
+                        onPress={() => { setSelectedAsset(a); setShowPicker(false); }}
+                      >
+                        <Image source={{ uri: a.icon }} style={styles.pickerIcon} />
+                        <Text style={[styles.pickerSymbol, { color: theme.text.primary }]}>{a.symbol}</Text>
+                        <Text style={[styles.pickerName, { color: theme.text.secondary }]}>{a.name}</Text>
+                        {selectedAsset.id === a.id && <Check size={14} color={theme.accent[400]} />}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </Animated.View>
 
               <Animated.View entering={FadeInDown.delay(100).duration(400)}>
@@ -218,9 +239,18 @@ export default function SendScreen() {
                 <Text style={[styles.confirmUsd, { color: theme.text.secondary }]}>
                   ~ ${usdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
                 </Text>
+                
+                {/* Unregistered Wallet Loss Warning */}
+                <View style={styles.warningCard}>
+                  <Text style={styles.warningTextHeader}>⚠️ Critical Warning</Text>
+                  <Text style={styles.warningTextBody}>
+                    Ensure the destination address is correct and compatible with the {selectedAsset.symbol} network. Sending crypto to an unregistered or incorrect address will cause funds to be permanently lost.
+                  </Text>
+                </View>
+
                 <View style={[styles.divider, { backgroundColor: theme.bg.border }]} />
                 {[
-                  ['To', `${address.slice(0, 10)}...${address.slice(-8)}`],
+                  ['To', `${address.slice(0, 12)}...${address.slice(-8)}`],
                   ['Ledger', 'Wallex XRP wallet'],
                   ['Fee', `0.00 ${selectedAsset.symbol}`],
                   ['Note', note || '-'],
@@ -240,21 +270,83 @@ export default function SendScreen() {
                 <Text style={[styles.errorText, { color: theme.error[400] }]}>{error}</Text>
               </View>
             )}
-            <TouchableOpacity style={styles.sendBtn} onPress={handleSend} disabled={!isValid || submitting} activeOpacity={0.85}>
-              <LinearGradient
-                colors={isValid ? [theme.accent[500], theme.primary[700]] : [theme.bg.border, theme.bg.border]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.sendBtnGradient}
-              >
-                <ArrowUpRight size={20} color="#fff" strokeWidth={2.5} />
-                <Text style={styles.sendBtnText}>{submitting ? 'Sending...' : confirmed ? 'Confirm & Send' : 'Review Transaction'}</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+
+            {!confirmed ? (
+              <TouchableOpacity style={styles.sendBtn} onPress={handleSend} disabled={!isValid || submitting} activeOpacity={0.85}>
+                <LinearGradient
+                  colors={isValid ? [theme.accent[500], theme.primary[700]] : [theme.bg.border, theme.bg.border]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.sendBtnGradient}
+                >
+                  <ArrowUpRight size={20} color="#fff" strokeWidth={2.5} />
+                  <Text style={styles.sendBtnText}>Review Transaction</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.swipeWrapper}>
+                <SwipeConfirmButton
+                  onConfirm={handleSend}
+                  loading={submitting}
+                  theme={theme}
+                />
+              </View>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+// Simple, self-contained SwipeConfirmButton component for React Native (Web + Mobile friendly)
+import { PanResponder } from 'react-native';
+import { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+
+function SwipeConfirmButton({ onConfirm, loading, theme }: { onConfirm: () => void; loading: boolean; theme: any }) {
+  const transX = useSharedValue(0);
+  const sliderWidth = 280; // approximate width of track
+  const handleWidth = 54;
+  const maxTravel = sliderWidth - handleWidth - 12;
+
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => !loading,
+    onMoveShouldSetPanResponder: () => !loading,
+    onPanResponderMove: (_, gestureState) => {
+      const x = Math.max(0, Math.min(gestureState.dx, maxTravel));
+      transX.value = x;
+    },
+    onPanResponderRelease: (_, gestureState) => {
+      if (gestureState.dx >= maxTravel - 20) {
+        transX.value = maxTravel;
+        onConfirm();
+      } else {
+        transX.value = withSpring(0, { damping: 15 });
+      }
+    },
+  });
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: transX.value }],
+    };
+  });
+
+  return (
+    <View style={styles.swipeTrack}>
+      <Animated.View {...panResponder.panHandlers} style={[styles.swipeHandle, animatedStyle]}>
+        <View style={styles.swipeHandleInner}>
+          {loading ? (
+            <Text style={{ color: '#fff', fontSize: 11, fontFamily: 'Inter-Bold' }}>...</Text>
+          ) : (
+            <Check size={20} color="#ffffff" strokeWidth={3} />
+          )}
+        </View>
+      </Animated.View>
+      <Text style={styles.swipeTrackText}>
+        {loading ? 'Processing...' : 'Swipe to Confirm Send'}
+      </Text>
+    </View>
   );
 }
 
@@ -309,4 +401,22 @@ const styles = StyleSheet.create({
   successAddr: { fontSize: 13, fontFamily: 'Inter-Regular' },
   successBtn: { borderRadius: 14, paddingVertical: 14, paddingHorizontal: 32, marginTop: 16, borderWidth: 1 },
   successBtnText: { fontSize: 15, fontFamily: 'Inter-SemiBold' },
+  // Picker styles
+  picker: { borderRadius: 14, borderWidth: 1, marginTop: 4, overflow: 'hidden' },
+  pickerItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, gap: 10 },
+  pickerIcon: { width: 24, height: 24, borderRadius: 12 },
+  pickerSymbol: { fontSize: 14, fontFamily: 'Inter-SemiBold', flex: 1 },
+  pickerName: { fontSize: 13, fontFamily: 'Inter-Regular', marginRight: 10 },
+  
+  // Warning Card
+  warningCard: { width: '100%', backgroundColor: '#fffbeb', borderRadius: 12, padding: 14, borderLeftWidth: 4, borderLeftColor: '#d97706', marginBottom: 16 },
+  warningTextHeader: { fontSize: 12, fontFamily: 'Inter-Bold', color: '#b45309', marginBottom: 4 },
+  warningTextBody: { fontSize: 11, fontFamily: 'Inter-Medium', color: '#d97706', lineHeight: 16 },
+
+  // Swipe confirm slider styles
+  swipeWrapper: { width: '100%', alignItems: 'center' },
+  swipeTrack: { width: '100%', height: 58, backgroundColor: '#111318', borderRadius: 29, position: 'relative', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  swipeHandle: { position: 'absolute', left: 4, width: 50, height: 50, borderRadius: 25, backgroundColor: '#ffffff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5, justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+  swipeHandleInner: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#22c55e', justifyContent: 'center', alignItems: 'center' },
+  swipeTrackText: { fontSize: 14, fontFamily: 'Inter-Bold', color: '#ffffff', opacity: 0.65 },
 });

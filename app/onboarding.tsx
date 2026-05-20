@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Check, Mail, Lock, User, ArrowRight, ShieldCheck, Zap, Globe, Download, Smartphone, X } from 'lucide-react-native';
 import { useUser } from '@/context/UserContext';
 import Svg, { Path } from 'react-native-svg';
@@ -556,12 +556,14 @@ const LANDING_HTML = `
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { ref } = useLocalSearchParams<{ ref?: string }>();
   const { completeOnboarding } = useUser();
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [referredBy, setReferredBy] = useState(ref || '');
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(CARTOON_AVATARS[0].uri);
   const [focused, setFocused] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -643,6 +645,7 @@ export default function OnboardingScreen() {
         password,
         wallet,
         avatarUri: selectedAvatar,
+        referredBy: referredBy.trim() || undefined,
       });
       setAuthBusy(false);
       
@@ -906,6 +909,23 @@ export default function OnboardingScreen() {
                             onFocus={() => setFocused('conf')} 
                             onBlur={() => setFocused(null)} 
                             secureTextEntry 
+                          />
+                        </View>
+                      )}
+
+                      {!isLoggingIn && (
+                        <View style={[styles.inputWrapper, focused === 'ref' && styles.inputWrapperFocused]}>
+                          <User size={18} color="#64748b" />
+                          <TextInput 
+                            style={styles.inputLight} 
+                            placeholder="Referral Code (Optional)" 
+                            placeholderTextColor="#64748b" 
+                            value={referredBy} 
+                            onChangeText={setReferredBy} 
+                            onFocus={() => setFocused('ref')} 
+                            onBlur={() => setFocused(null)} 
+                            autoCapitalize="none" 
+                            autoCorrect={false}
                           />
                         </View>
                       )}

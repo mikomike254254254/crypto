@@ -11,6 +11,8 @@ import {
   Dimensions,
   TextInput,
   Linking,
+  Clipboard,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -53,6 +55,18 @@ export default function ProfileScreen() {
   };
   const kyc = kycConfig[kycStatus];
   const kycColor = theme[kyc.colorKey];
+
+  const copyToClipboard = (text: string) => {
+    if (Platform.OS === 'web') {
+      if (navigator?.clipboard) {
+        navigator.clipboard.writeText(text);
+        alert('Referral link copied!');
+        return;
+      }
+    }
+    Clipboard.setString(text);
+    alert('Referral link copied!');
+  };
 
   const avatarUri = profile.avatarUri ?? CARTOON_AVATARS[0].uri;
   const openSupportEmail = async () => {
@@ -128,6 +142,34 @@ export default function ProfileScreen() {
               {kyc.icon}
               <Text style={[styles.kycBadgeText, { color: kycColor[400] }]}>{kyc.label}</Text>
             </View>
+          </View>
+        </View>
+
+        {/* ── Referral Card ── */}
+        <View style={[styles.referralCard, { backgroundColor: theme.bg.card, borderColor: theme.bg.border }]}>
+          <View style={styles.referralHeader}>
+            <View style={[styles.referralIcon, { backgroundColor: theme.accent[500] + '18' }]}>
+              <User size={20} color={theme.accent[400]} />
+            </View>
+            <View style={styles.referralInfo}>
+              <Text style={[styles.referralTitle, { color: theme.text.primary }]}>Refer & Earn Crypto</Text>
+              <Text style={[styles.referralDesc, { color: theme.text.secondary }]}>
+                Get 10 XRP for every friend who joins. They also get a 10.79 XRP ($15) welcome bonus!
+              </Text>
+            </View>
+          </View>
+          
+          <View style={[styles.linkWrapper, { backgroundColor: theme.bg.primary, borderColor: theme.bg.border }]}>
+            <Text style={[styles.linkText, { color: theme.text.primary }]} numberOfLines={1}>
+              {`${WALLEX_BRAND.websiteUrl}/signup?ref=${profile.wallet}`}
+            </Text>
+            <TouchableOpacity 
+              style={[styles.copyBtn, { backgroundColor: theme.accent[500] }]}
+              onPress={() => copyToClipboard(`${WALLEX_BRAND.websiteUrl}/signup?ref=${profile.wallet}`)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.copyBtnText}>Copy</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -538,4 +580,15 @@ const styles = StyleSheet.create({
   avatarOptionImg: { width: 56, height: 56, borderRadius: 28 },
   avatarOptionCheck: { position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   avatarOptionLabel: { fontSize: 12, fontFamily: 'Inter-Medium' },
+  // Referral styles
+  referralCard: { borderRadius: 20, padding: 18, marginBottom: 12, borderWidth: 1, gap: 14 },
+  referralHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  referralIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  referralInfo: { flex: 1 },
+  referralTitle: { fontSize: 16, fontFamily: 'Inter-SemiBold', marginBottom: 2 },
+  referralDesc: { fontSize: 13, fontFamily: 'Inter-Regular', lineHeight: 18 },
+  linkWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: 1, paddingLeft: 12, paddingRight: 4, paddingVertical: 4, justifyContent: 'space-between', marginTop: 4 },
+  linkText: { fontSize: 12, fontFamily: 'Inter-Medium', flex: 1, marginRight: 8 },
+  copyBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  copyBtnText: { color: '#fff', fontSize: 12, fontFamily: 'Inter-SemiBold' },
 });

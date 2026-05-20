@@ -98,8 +98,40 @@ const UserContext = createContext<UserContextType>({
   isLoadingAuth: false,
 });
 
+const isWeb = Platform.OS === 'web';
+
+function saveLocalProfile(prof: UserProfile) {
+  try {
+    if (isWeb && typeof window !== 'undefined') {
+      window.localStorage.setItem('wallex_profile', JSON.stringify(prof));
+    }
+  } catch (err) {
+    console.error('Failed to save profile locally:', err);
+  }
+}
+
+function getLocalProfile(): UserProfile | null {
+  try {
+    if (isWeb && typeof window !== 'undefined') {
+      const data = window.localStorage.getItem('wallex_profile');
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (parsed.kycSubmittedAt) parsed.kycSubmittedAt = new Date(parsed.kycSubmittedAt);
+        if (parsed.security?.pinSetAt) parsed.security.pinSetAt = new Date(parsed.security.pinSetAt);
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load profile locally:', err);
+  }
+  return null;
+}
+
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfileState] = useState<UserProfile>(DEFAULT_PROFILE);
+  const [profile, setProfileState] = useState<UserProfile>(() => {
+    const local = getLocalProfile();
+    return local || DEFAULT_PROFILE;
+  });
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   // On mount: check if there is an existing Supabase session and restore profile
@@ -168,6 +200,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
       if (event === 'SIGNED_OUT') {
         loggedInThisSession = false;
         setProfileState(DEFAULT_PROFILE);
+        try {
+          if (isWeb && typeof window !== 'undefined') {
+            window.localStorage.removeItem('wallex_profile');
+          }
+        } catch (e) {}
       }
     }) ?? { data: { subscription: null } };
 
@@ -186,18 +223,22 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const avatarUri = dbProfile?.avatar_url ?? user.user_metadata?.avatar_url ?? CARTOON_AVATARS[0].uri;
     const kycStatus = (dbProfile?.kyc_status ?? 'unverified') as UserProfile['kycStatus'];
 
-    setProfileState((prev) => ({
-      ...prev,
-      name,
-      email,
-      wallet,
-      avatarUri,
-      kycStatus,
-      authProvider: 'email',
-      passwordSet: true,
-      isOnboarded: true,
-      supabaseId: user.id,
-    }));
+    setProfileState((prev) => {
+      const updated = {
+        ...prev,
+        name,
+        email,
+        wallet,
+        avatarUri,
+        kycStatus,
+        authProvider: 'email' as const,
+        passwordSet: true,
+        isOnboarded: true,
+        supabaseId: user.id,
+      };
+      saveLocalProfile(updated);
+      return updated;
+    });
 
     // Audit Log: user_login triggered exactly once per session
     if (!loggedInThisSession) {
@@ -213,7 +254,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }
 
   const setProfile = (updates: Partial<UserProfile>) => {
-    setProfileState((prev) => ({ ...prev, ...updates }));
+    setProfileState((prev) => {
+      const updated = { ...prev, ...updates };
+      saveLocalProfile(updated);
+      return updated;
+    });
   };
 
   const completeOnboarding = (
@@ -225,51 +270,67 @@ export function UserProvider({ children }: { children: ReactNode }) {
   ) => {
     const wallet = createRippleWalletAddress(email, name);
 
-    setProfileState((prev) => ({
-      ...prev,
-      name,
-      email,
-      wallet,
-      avatarUri,
-      authProvider: provider,
-      passwordSet: Boolean(password && password.length >= 8),
-      isOnboarded: true,
-    }));
+    setProfileState((prev) => {
+      const updated = {
+        ...prev,
+        name,
+        email,
+        wallet,
+        avatarUri,
+        authProvider: provider,
+        passwordSet: Boolean(password && password.length >= 8),
+        isOnboarded: true,
+      };
+      saveLocalProfile(updated);
+      return updated;
+    });
 
     return wallet;
   };
 
   const submitKyc = (personalInfo: UserProfile['personalInfo'], idType: string) => {
-    setProfileState((prev) => ({
-      ...prev,
-      personalInfo,
-      kycDocuments: {
-        ...prev.kycDocuments,
-        idType,
-      },
-      kycStatus: 'pending',
-      kycSubmittedAt: new Date(),
-    }));
+    setProfileState((prev) => {
+      const updated = {
+        ...prev,
+        personalInfo,
+        kycDocuments: {
+          ...prev.kycDocuments,
+          idType,
+        },
+        kycStatus: 'pending' as const,
+        kycSubmittedAt: new Date(),
+      };
+      saveLocalProfile(updated);
+      return updated;
+    });
   };
 
   const uploadDocument = (doc: 'frontUploaded' | 'backUploaded' | 'selfieUploaded') => {
-    setProfileState((prev) => ({
-      ...prev,
-      kycDocuments: {
-        ...prev.kycDocuments,
-        [doc]: true,
-      },
-    }));
+    setProfileState((prev) => {
+      const updated = {
+        ...prev,
+        kycDocuments: {
+          ...prev.kycDocuments,
+          [doc]: true,
+        },
+      };
+      saveLocalProfile(updated);
+      return updated;
+    });
   };
 
   const setSecurity = (updates: Partial<UserProfile['security']>) => {
-    setProfileState((prev) => ({
-      ...prev,
-      security: {
-        ...prev.security,
-        ...updates,
-      },
-    }));
+    setProfileState((prev) => {
+      const updated = {
+        ...prev,
+        security: {
+          ...prev.security,
+          ...updates,
+        },
+      };
+      saveLocalProfile(updated);
+      return updated;
+    });
   };
 
   const signOut = async () => {
@@ -290,6 +351,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
     loggedInThisSession = false;
     setProfileState(DEFAULT_PROFILE);
+    try {
+      if (isWeb && typeof window !== 'undefined') {
+        window.localStorage.removeItem('wallex_profile');
+      }
+    } catch (e) {}
   };
 
   return (

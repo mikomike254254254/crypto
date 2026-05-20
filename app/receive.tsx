@@ -5,6 +5,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Clipboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -24,17 +25,18 @@ export default function ReceiveScreen() {
   const [copied, setCopied] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
 
-  const handleCopy = () => {
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const qrBg = theme.isDark ? '#000000' : '#ffffff';
   const qrCellColor = theme.isDark ? theme.bg.primary : '#1f1b16';
   const receiveAddress = selectedAsset.id === 'xrp' ? profile.wallet : selectedAsset.address;
   const receiveNote = selectedAsset.id === 'xrp'
     ? 'Share this Ripple-style XRP wallet address with another Wallex user.'
     : `Only send ${selectedAsset.symbol} to this address.`;
+
+  const handleCopy = () => {
+    Clipboard.setString(receiveAddress);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg.primary }]} edges={['top']}>

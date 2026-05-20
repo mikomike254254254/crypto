@@ -9,6 +9,7 @@ create table if not exists public.users (
   avatar_url text,
   kyc_status text default 'unverified' check (kyc_status in ('pending', 'approved', 'verified', 'rejected', 'unverified')),
   signup_bonus_awarded boolean default false,
+  referred_by text references public.users(wallet),
   created_at timestamptz default now()
 );
 
@@ -95,33 +96,47 @@ create table if not exists public.admins (
 create or replace function public.update_balance_on_tx()
 returns trigger as $$
 begin
+  -- If it's a outgoing transaction from a user account (not system/external/etc.)
   if new.from_wallet is not null and new.from_wallet not in ('wallex', 'system', 'external') then
-    update public.balances
-    set amount = amount - new.amount,
-        updated_at = now()
-    where wallet = new.from_wallet and amount >= new.amount;
-
-    if not found then
-      raise exception 'Insufficient balance for wallet %', new.from_wallet;
-    end if;
-
+    -- 1. Update the specific token balance in wallet_balances
     update public.wallet_balances
     set amount = amount - new.amount,
         updated_at = now()
-    where wallet = new.from_wallet and token = coalesce(new.token, 'XRP') and amount >= new.amount;
+    where wallet = new.from_wallet 
+      and token = coalesce(new.token, 'XRP') 
+      and amount >= new.amount;
+
+    -- If the token balance row didn't exist or had insufficient balance, abort!
+    if not found then
+      raise exception 'Insufficient balance for token % in wallet %', coalesce(new.token, 'XRP'), new.from_wallet;
+    end if;
+
+    -- 2. If the token is XRP, also update the main balances table
+    if coalesce(new.token, 'XRP') = 'XRP' then
+      update public.balances
+      set amount = amount - new.amount,
+          updated_at = now()
+      where wallet = new.from_wallet and amount >= new.amount;
+    end if;
   end if;
 
-  insert into public.balances (wallet, amount)
-  values (new.to_wallet, new.amount)
-  on conflict (wallet)
-  do update set amount = public.balances.amount + excluded.amount,
-                updated_at = now();
+  -- 3. Update the receiver's token balance in wallet_balances ONLY if the wallet belongs to a registered user
+  if exists (select 1 from public.users where wallet = new.to_wallet) then
+    insert into public.wallet_balances (wallet, token, amount)
+    values (new.to_wallet, coalesce(new.token, 'XRP'), new.amount)
+    on conflict (wallet, token)
+    do update set amount = public.wallet_balances.amount + excluded.amount,
+                  updated_at = now();
 
-  insert into public.wallet_balances (wallet, token, amount)
-  values (new.to_wallet, coalesce(new.token, 'XRP'), new.amount)
-  on conflict (wallet, token)
-  do update set amount = public.wallet_balances.amount + excluded.amount,
-                updated_at = now();
+    -- 4. If the token is XRP, also update the receiver's main balances table
+    if coalesce(new.token, 'XRP') = 'XRP' then
+      insert into public.balances (wallet, amount)
+      values (new.to_wallet, new.amount)
+      on conflict (wallet)
+      do update set amount = public.balances.amount + excluded.amount,
+                    updated_at = now();
+    end if;
+  end if;
 
   return new;
 end;
@@ -144,12 +159,29 @@ begin
   on conflict (wallet, token) do nothing;
 
   if new.signup_bonus_awarded is false then
+    -- Award signup bonus to the user
     insert into public.transactions (from_wallet, to_wallet, amount, token, type, status, note)
     values ('system', new.wallet, 10.79, 'XRP', 'signup_bonus', 'completed', '$15 Wallex signup bonus');
 
     update public.users
     set signup_bonus_awarded = true
     where id = new.id;
+    
+    -- Award referral bonus to the referrer (10 XRP)
+    if new.referred_by is not null then
+      -- Create balances rows for referrer if not exists
+      insert into public.balances (wallet, amount)
+      values (new.referred_by, 0)
+      on conflict (wallet) do nothing;
+
+      insert into public.wallet_balances (wallet, token, amount)
+      values (new.referred_by, 'XRP', 0)
+      on conflict (wallet, token) do nothing;
+
+      -- Insert referral bonus transaction
+      insert into public.transactions (from_wallet, to_wallet, amount, token, type, status, note)
+      values ('system', new.referred_by, 10.00, 'XRP', 'referral_bonus', 'completed', 'Referral bonus for inviting ' || coalesce(new.full_name, new.email, 'new user'));
+    end if;
   end if;
 
   return new;
@@ -165,20 +197,24 @@ create or replace function public.handle_new_auth_user()
 returns trigger as $$
 declare
   wallet_from_meta text;
+  referred_by_val text;
 begin
   wallet_from_meta := coalesce(
     new.raw_user_meta_data->>'wallet',
     'r' || left(replace(new.id::text, '-', '') || md5(coalesce(new.email, 'wallex')), 33)
   );
+  
+  referred_by_val := new.raw_user_meta_data->>'referred_by';
 
-  insert into public.users (auth_user_id, wallet, email, full_name, avatar_url, kyc_status)
+  insert into public.users (auth_user_id, wallet, email, full_name, avatar_url, kyc_status, referred_by)
   values (
     new.id,
     lower(wallet_from_meta),
     new.email,
     new.raw_user_meta_data->>'full_name',
     new.raw_user_meta_data->>'avatar_url',
-    'unverified'
+    'unverified',
+    lower(referred_by_val)
   )
   on conflict (auth_user_id) do update set
     email = excluded.email,

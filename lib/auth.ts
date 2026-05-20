@@ -8,6 +8,7 @@ type EmailSignupParams = {
   name: string;
   wallet: string;
   avatarUri: string | null;
+  referredBy?: string;
 };
 
 export function getAuthRedirectUrl(path = '/') {
@@ -31,6 +32,7 @@ export async function signUpWithEmailPassword(params: EmailSignupParams) {
         full_name: params.name,
         wallet: params.wallet,
         avatar_url: params.avatarUri,
+        referred_by: params.referredBy || null,
       },
     },
   });
