@@ -654,11 +654,8 @@ export default function OnboardingScreen() {
         return;
       }
       
-      if (result.session) {
-        completeOnboarding(name.trim(), email.trim(), selectedAvatar, password, 'email');
-      } else {
-        setShowVerificationPending(true);
-      }
+      // Auto-onboard and go directly to the wallet dashboard
+      completeOnboarding(name.trim(), email.trim(), selectedAvatar, password, 'email');
     }
   };
 
