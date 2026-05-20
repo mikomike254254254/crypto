@@ -568,6 +568,7 @@ export default function OnboardingScreen() {
   const [authNotice, setAuthNotice] = useState('');
   const [authBusy, setAuthBusy] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [showVerificationPending, setShowVerificationPending] = useState(false);
 
   // Trigger app install suggestion 3 seconds into use
   useEffect(() => {
@@ -650,8 +651,11 @@ export default function OnboardingScreen() {
         return;
       }
       
-      alert(result.message);
-      completeOnboarding(name.trim(), email.trim(), selectedAvatar, password, 'email');
+      if (result.session) {
+        completeOnboarding(name.trim(), email.trim(), selectedAvatar, password, 'email');
+      } else {
+        setShowVerificationPending(true);
+      }
     }
   };
 
@@ -786,158 +790,192 @@ export default function OnboardingScreen() {
             </View>
 
             <View style={styles.authCard}>
-              {step === 1 && (
+              {showVerificationPending ? (
                 <View style={styles.stepBlock}>
-                  <Text style={styles.stepTitle}>
-                    {isLoggingIn ? 'Sign In to Wallex' : 'Create Account'}
-                  </Text>
+                  <Text style={styles.stepTitle}>Verify Your Email</Text>
                   <Text style={styles.stepSub}>
-                    {isLoggingIn ? 'Securely access your smart XRP portfolio.' : 'Start your secure non-custodial crypto journey.'}
+                    We have sent a verification link to{"\n"}
+                    <Text style={{ color: '#0ea5e9', fontFamily: 'Inter-SemiBold' }}>{email}</Text>.
                   </Text>
-
-                  {/* Highly prominent Google Sign-up option */}
-                  <TouchableOpacity style={styles.googleSignupBtn} onPress={handleGoogleAuth} disabled={authBusy}>
-                    <GoogleIcon size={18} />
-                    <Text style={styles.googleSignupText}>
-                      {isLoggingIn ? 'Sign in with Google' : 'Continue with Google'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <Text style={styles.googleInfoNote}>
-                     💡 **Google Secure Sign-in**: No password needed. You can set or change your account password later at any time in your profile settings.
-                  </Text>
-
-                  <View style={styles.divider}>
-                    <View style={styles.divLine} />
-                    <Text style={styles.divText}>or use email</Text>
-                    <View style={styles.divLine} />
-                  </View>
-
-                  {!isLoggingIn && (
-                    <View style={[styles.inputWrapper, focused === 'name' && styles.inputWrapperFocused]}>
-                      <User size={18} color="#64748b" />
-                      <TextInput 
-                        style={styles.inputLight} 
-                        placeholder="Full Name" 
-                        placeholderTextColor="#64748b" 
-                        value={name} 
-                        onChangeText={setName} 
-                        onFocus={() => setFocused('name')} 
-                        onBlur={() => setFocused(null)} 
-                        autoCapitalize="words" 
-                      />
-                    </View>
-                  )}
-
-                  <View style={[styles.inputWrapper, focused === 'email' && styles.inputWrapperFocused]}>
-                    <Mail size={18} color="#64748b" />
-                    <TextInput 
-                      style={styles.inputLight} 
-                      placeholder="Email Address" 
-                      placeholderTextColor="#64748b" 
-                      value={email} 
-                      onChangeText={setEmail} 
-                      onFocus={() => setFocused('email')} 
-                      onBlur={() => setFocused(null)} 
-                      keyboardType="email-address" 
-                      autoCapitalize="none" 
-                    />
-                  </View>
-
-                  <View style={[styles.inputWrapper, focused === 'pass' && styles.inputWrapperFocused]}>
-                    <Lock size={18} color="#64748b" />
-                    <TextInput 
-                      style={styles.inputLight} 
-                      placeholder="Password" 
-                      placeholderTextColor="#64748b" 
-                      value={password} 
-                      onChangeText={setPassword} 
-                      onFocus={() => setFocused('pass')} 
-                      onBlur={() => setFocused(null)} 
-                      secureTextEntry 
-                    />
-                  </View>
-
-                  {!isLoggingIn && (
-                    <View style={[styles.inputWrapper, focused === 'conf' && styles.inputWrapperFocused]}>
-                      <Lock size={18} color="#64748b" />
-                      <TextInput 
-                        style={styles.inputLight} 
-                        placeholder="Confirm Password" 
-                        placeholderTextColor="#64748b" 
-                        value={confirmPassword} 
-                        onChangeText={setConfirmPassword} 
-                        onFocus={() => setFocused('conf')} 
-                        onBlur={() => setFocused(null)} 
-                        secureTextEntry 
-                      />
-                    </View>
-                  )}
-
-                  {authNotice ? <Text style={styles.noticeText}>{authNotice}</Text> : null}
-
-                  <TouchableOpacity 
-                    style={[styles.primaryBtn, !canProceed && { opacity: 0.5 }, { marginTop: 12 }]} 
-                    onPress={handleNext} 
-                    disabled={!canProceed || authBusy}
-                  >
-                    <Text style={styles.primaryBtnText}>
-                      {authBusy ? 'Please wait...' : isLoggingIn ? 'Log In' : 'Sign Up'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity 
-                    onPress={() => {
-                      setIsLoggingIn(!isLoggingIn);
-                      setAuthNotice('');
-                    }} 
-                    style={styles.toggleLink}
-                  >
-                    <Text style={styles.toggleText}>
-                      {isLoggingIn ? "Don't have an account? " : "Already have an account? "}
-                      <Text style={styles.toggleHighlight}>
-                        {isLoggingIn ? 'Sign Up' : 'Log In'}
-                      </Text>
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {step === 2 && (
-                <View style={styles.stepBlock}>
-                  <Text style={styles.stepTitle}>Select Avatar</Text>
-                  <Text style={styles.stepSub}>Personalize your dashboard profile.</Text>
                   
-                  <View style={styles.avatarGrid}>
-                    {CARTOON_AVATARS.map((avatar) => {
-                      const isSelected = selectedAvatar === avatar.uri;
-                      return (
-                        <TouchableOpacity 
-                          key={avatar.id} 
-                          style={[styles.avatarBox, isSelected && styles.avatarBoxActive]} 
-                          onPress={() => setSelectedAvatar(avatar.uri)}
-                        >
-                          <Image source={{ uri: avatar.uri }} style={styles.avatarImg} />
-                          {isSelected && (
-                            <View style={styles.avatarCheck}>
-                              <Check size={14} color="#fff" strokeWidth={3} />
-                            </View>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
+                  <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                    <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(14, 165, 233, 0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                      <Mail size={40} color="#0ea5e9" />
+                    </View>
                   </View>
 
+                  <Text style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', lineHeight: 20, marginBottom: 10 }}>
+                    Please check your inbox or spam folder. You must click the confirmation link in the email before logging in.
+                  </Text>
+
                   <TouchableOpacity 
-                    style={[styles.primaryBtn, !canProceed && { opacity: 0.5 }, { marginTop: 40 }]} 
-                    onPress={handleNext} 
-                    disabled={!canProceed || authBusy}
+                    style={styles.primaryBtn} 
+                    onPress={() => {
+                      setShowVerificationPending(false);
+                      setIsLoggingIn(true);
+                      setStep(1);
+                      setAuthNotice('Check your email, verify it, then enter your details to log in.');
+                    }}
                   >
-                    <Text style={styles.primaryBtnText}>
-                      {authBusy ? 'Processing...' : 'Complete Setup'}
-                    </Text>
+                    <Text style={styles.primaryBtnText}>Proceed to Login</Text>
                   </TouchableOpacity>
                 </View>
+              ) : (
+                <>
+                  {step === 1 && (
+                    <View style={styles.stepBlock}>
+                      <Text style={styles.stepTitle}>
+                        {isLoggingIn ? 'Sign In to Wallex' : 'Create Account'}
+                      </Text>
+                      <Text style={styles.stepSub}>
+                        {isLoggingIn ? 'Securely access your smart XRP portfolio.' : 'Start your secure non-custodial crypto journey.'}
+                      </Text>
+
+                      {/* Highly prominent Google Sign-up option */}
+                      <TouchableOpacity style={styles.googleSignupBtn} onPress={handleGoogleAuth} disabled={authBusy}>
+                        <GoogleIcon size={18} />
+                        <Text style={styles.googleSignupText}>
+                          {isLoggingIn ? 'Sign in with Google' : 'Continue with Google'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <Text style={styles.googleInfoNote}>
+                         💡 **Google Secure Sign-in**: No password needed. You can set or change your account password later at any time in your profile settings.
+                      </Text>
+
+                      <View style={styles.divider}>
+                        <View style={styles.divLine} />
+                        <Text style={styles.divText}>or use email</Text>
+                        <View style={styles.divLine} />
+                      </View>
+
+                      {!isLoggingIn && (
+                        <View style={[styles.inputWrapper, focused === 'name' && styles.inputWrapperFocused]}>
+                          <User size={18} color="#64748b" />
+                          <TextInput 
+                            style={styles.inputLight} 
+                            placeholder="Full Name" 
+                            placeholderTextColor="#64748b" 
+                            value={name} 
+                            onChangeText={setName} 
+                            onFocus={() => setFocused('name')} 
+                            onBlur={() => setFocused(null)} 
+                            autoCapitalize="words" 
+                          />
+                        </View>
+                      )}
+
+                      <View style={[styles.inputWrapper, focused === 'email' && styles.inputWrapperFocused]}>
+                        <Mail size={18} color="#64748b" />
+                        <TextInput 
+                          style={styles.inputLight} 
+                          placeholder="Email Address" 
+                          placeholderTextColor="#64748b" 
+                          value={email} 
+                          onChangeText={setEmail} 
+                          onFocus={() => setFocused('email')} 
+                          onBlur={() => setFocused(null)} 
+                          keyboardType="email-address" 
+                          autoCapitalize="none" 
+                        />
+                      </View>
+
+                      <View style={[styles.inputWrapper, focused === 'pass' && styles.inputWrapperFocused]}>
+                        <Lock size={18} color="#64748b" />
+                        <TextInput 
+                          style={styles.inputLight} 
+                          placeholder="Password" 
+                          placeholderTextColor="#64748b" 
+                          value={password} 
+                          onChangeText={setPassword} 
+                          onFocus={() => setFocused('pass')} 
+                          onBlur={() => setFocused(null)} 
+                          secureTextEntry 
+                        />
+                      </View>
+
+                      {!isLoggingIn && (
+                        <View style={[styles.inputWrapper, focused === 'conf' && styles.inputWrapperFocused]}>
+                          <Lock size={18} color="#64748b" />
+                          <TextInput 
+                            style={styles.inputLight} 
+                            placeholder="Confirm Password" 
+                            placeholderTextColor="#64748b" 
+                            value={confirmPassword} 
+                            onChangeText={setConfirmPassword} 
+                            onFocus={() => setFocused('conf')} 
+                            onBlur={() => setFocused(null)} 
+                            secureTextEntry 
+                          />
+                        </View>
+                      )}
+
+                      {authNotice ? <Text style={styles.noticeText}>{authNotice}</Text> : null}
+
+                      <TouchableOpacity 
+                        style={[styles.primaryBtn, !canProceed && { opacity: 0.5 }, { marginTop: 12 }]} 
+                        onPress={handleNext} 
+                        disabled={!canProceed || authBusy}
+                      >
+                        <Text style={styles.primaryBtnText}>
+                          {authBusy ? 'Please wait...' : isLoggingIn ? 'Log In' : 'Sign Up'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity 
+                        onPress={() => {
+                          setIsLoggingIn(!isLoggingIn);
+                          setAuthNotice('');
+                        }} 
+                        style={styles.toggleLink}
+                      >
+                        <Text style={styles.toggleText}>
+                          {isLoggingIn ? "Don't have an account? " : "Already have an account? "}
+                          <Text style={styles.toggleHighlight}>
+                            {isLoggingIn ? 'Sign Up' : 'Log In'}
+                          </Text>
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {step === 2 && (
+                    <View style={styles.stepBlock}>
+                      <Text style={styles.stepTitle}>Select Avatar</Text>
+                      <Text style={styles.stepSub}>Personalize your dashboard profile.</Text>
+                      
+                      <View style={styles.avatarGrid}>
+                        {CARTOON_AVATARS.map((avatar) => {
+                          const isSelected = selectedAvatar === avatar.uri;
+                          return (
+                            <TouchableOpacity 
+                              key={avatar.id} 
+                              style={[styles.avatarBox, isSelected && styles.avatarBoxActive]} 
+                              onPress={() => setSelectedAvatar(avatar.uri)}
+                            >
+                              <Image source={{ uri: avatar.uri }} style={styles.avatarImg} />
+                              {isSelected && (
+                                <View style={styles.avatarCheck}>
+                                  <Check size={14} color="#fff" strokeWidth={3} />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+
+                      <TouchableOpacity 
+                        style={[styles.primaryBtn, !canProceed && { opacity: 0.5 }, { marginTop: 40 }]} 
+                        onPress={handleNext} 
+                        disabled={!canProceed || authBusy}
+                      >
+                        <Text style={styles.primaryBtnText}>
+                          {authBusy ? 'Processing...' : 'Complete Setup'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </>
               )}
             </View>
           </Animated.View>

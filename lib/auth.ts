@@ -54,7 +54,7 @@ export async function signUpWithEmailPassword(params: EmailSignupParams) {
     });
   }
 
-  return { ok: true, mode: 'supabase' as const, message: 'Account created! Check your email to confirm, or log in if confirmation is off.', user: data.user };
+  return { ok: true, mode: 'supabase' as const, message: 'Account created! Check your email to confirm, or log in if confirmation is off.', user: data.user, session: data.session };
 }
 
 export async function signInWithEmailPassword(email: string, password: string) {

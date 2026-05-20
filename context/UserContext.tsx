@@ -44,7 +44,7 @@ export interface UserProfile {
 const DEFAULT_PROFILE: UserProfile = {
   name: '',
   email: '',
-  wallet: 'rWallexDemoXRP9s7Q8m5P2t4K6n3B1a',
+  wallet: '',
   avatar: null,
   avatarUri: CARTOON_AVATARS[0].uri,
   authProvider: 'local',
