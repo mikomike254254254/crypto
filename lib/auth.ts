@@ -12,10 +12,11 @@ type EmailSignupParams = {
 };
 
 export function getAuthRedirectUrl(path = '/') {
+  const redirectHost = process.env.EXPO_PUBLIC_WALLEX_REDIRECT_HOST;
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    return `${window.location.origin}${path}`;
+    return `${redirectHost || window.location.origin}${path}`;
   }
-  return process.env.EXPO_PUBLIC_WALLEX_WEBSITE_URL || WALLEX_BRAND.websiteUrl;
+  return redirectHost || process.env.EXPO_PUBLIC_WALLEX_WEBSITE_URL || WALLEX_BRAND.websiteUrl;
 }
 
 export async function signUpWithEmailPassword(params: EmailSignupParams) {
