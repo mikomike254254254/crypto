@@ -602,10 +602,11 @@ export default function OnboardingScreen() {
       const handleMessage = (event: MessageEvent) => {
         if (event.data?.type === 'OPEN_WALLET') {
           setIsLoggingIn(false);
-          setStep(1);
+          // Delay step transition to let touch/click event cycle finish before iframe unmount
+          setTimeout(() => setStep(1), 100);
         } else if (event.data?.type === 'LOGIN') {
           setIsLoggingIn(true);
-          setStep(1);
+          setTimeout(() => setStep(1), 100);
         }
       };
       window.addEventListener('message', handleMessage);

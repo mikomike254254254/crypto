@@ -199,12 +199,20 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
       if (event === 'SIGNED_OUT') {
         loggedInThisSession = false;
-        setProfileState(DEFAULT_PROFILE);
-        try {
-          if (isWeb && typeof window !== 'undefined') {
-            window.localStorage.removeItem('wallex_profile');
+        // Only clear local profile if user was actually signed in via Supabase.
+        // Prevents the automatic SIGNED_OUT event on startup from wiping local-onboarding profiles.
+        setProfileState((prev) => {
+          if (prev.supabaseId) {
+            try {
+              if (isWeb && typeof window !== 'undefined') {
+                window.localStorage.removeItem('wallex_profile');
+              }
+            } catch (e) {}
+            return DEFAULT_PROFILE;
           }
-        } catch (e) {}
+          // No Supabase session — preserve existing local profile unchanged
+          return prev;
+        });
       }
     }) ?? { data: { subscription: null } };
 
