@@ -17,9 +17,11 @@ import { ArrowLeft, ChevronDown, ScanLine, ArrowUpRight, CheckCircle, Check, X, 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
+import { QRCodeModal } from '@/lib/qrGenerator';
 import { CryptoColors } from '@/constants/colors';
 import { CRYPTO_ASSETS } from '@/constants/crypto';
 import { recordWalletTransfer, loadWalletBalances } from '@/lib/supabase';
+import { logScan } from '@/lib/qrScanner';
 import { isRippleWalletAddress } from '@/lib/wallet';
 import { useEffect } from 'react';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -41,8 +43,14 @@ export default function SendScreen() {
   const [showScanModal, setShowScanModal] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
-
-  const handleBarcodeScanned = (data: string) => {
+  const [qrVisible, setQrVisible] = useState(false);
+  const handleBarcodeScanned = async (data: string) => {
+    setScanned(true);
+    setAddress(data.trim());
+    setShowScanModal(false);
+    // Log the QR scan event
+    await logScan(data.trim(), profile.wallet?.toLowerCase());
+  };
     setScanned(true);
     setAddress(data.trim());
     setShowScanModal(false);

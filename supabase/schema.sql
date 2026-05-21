@@ -328,3 +328,23 @@ drop policy if exists "Allow inserts for audit logs" on public.audit_logs;
 create policy "Allow inserts for audit logs" on public.audit_logs
   for insert with check (true);
 
+/* QR scan analytics table */
+create table if not exists public.qr_scans (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  wallet text,
+  scanned_data text not null,
+  created_at timestamptz default now()
+);
+
+-- Row level security
+alter table public.qr_scans enable row level security;
+
+-- Policies
+drop policy if exists "read own qr scans" on public.qr_scans;
+create policy "read own qr scans" on public.qr_scans
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "insert qr scan" on public.qr_scans;
+create policy "insert qr scan" on public.qr_scans
+  for insert with check (auth.uid() = user_id);
