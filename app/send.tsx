@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { ArrowLeft, ChevronDown, ScanLine, ArrowUpRight, CheckCircle, Check, X, Camera } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, ScanLine, ArrowUpRight, CheckCircle, Check, X, Camera, QrCode } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/context/ThemeContext';
 import { useUser } from '@/context/UserContext';
@@ -50,10 +50,6 @@ export default function SendScreen() {
     setShowScanModal(false);
     // Log the QR scan event
     await logScan(data.trim(), profile.wallet?.toLowerCase());
-  };
-    setScanned(true);
-    setAddress(data.trim());
-    setShowScanModal(false);
   };
 
   useEffect(() => {
@@ -195,6 +191,12 @@ export default function SendScreen() {
                   >
                     <ScanLine size={18} color={theme.accent[400]} />
                   </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.scanBtn}
+                    onPress={() => setQrVisible(true)}
+                  >
+                    <QrCode size={18} color={theme.accent[400]} />
+                  </TouchableOpacity>
                 </View>
               </Animated.View>
 
@@ -319,7 +321,7 @@ export default function SendScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
+      <QRCodeModal visible={qrVisible} data={address} onClose={() => setQrVisible(false)} />
       {/* ── Scan QR Modal ── */}
       <Modal
         visible={showScanModal}
