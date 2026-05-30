@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Platform,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -20,6 +21,7 @@ export default function BuyScreen() {
   const router = useRouter();
   const { theme } = useTheme();
   const { profile } = useUser();
+  const [loadingAmount, setLoadingAmount] = useState<number | null>(null);
 
   const DEPOSIT_OPTIONS = [
     {
@@ -48,8 +50,45 @@ export default function BuyScreen() {
     }
   ];
 
-  const handleDeposit = (url: string) => {
-    Linking.openURL(url).catch((err) => console.error('Failed to open link:', err));
+  const handleDeposit = async (amount: number, staticUrl: string) => {
+    if (loadingAmount !== null) return;
+    setLoadingAmount(amount);
+    try {
+      // Calculate XRP amount using 0.72 XRP per USD
+      const units = amount * 0.72;
+      const baseUrl = WALLEX_BRAND.websiteUrl || 'https://wallex.online';
+      
+      const response = await fetch(`${baseUrl}/api/payflee-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          xrpAmount: units,
+          email: profile.email || 'guest@wallex.online',
+          wallet: profile.wallet || 'rGuestWalletAddressExample',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Payflee checkout API responded with an error');
+      }
+
+      const data = await response.json();
+      if (data.checkoutUrl) {
+        Linking.openURL(data.checkoutUrl).catch((err) => {
+          console.error('Failed to open generated checkout URL:', err);
+          Linking.openURL(staticUrl);
+        });
+      } else {
+        throw new Error('No checkoutUrl returned from api');
+      }
+    } catch (err) {
+      console.warn('Pay Flee Checkout API failed, falling back to static url:', err);
+      Linking.openURL(staticUrl).catch((e) => console.error('Failed to open fallback URL:', e));
+    } finally {
+      setLoadingAmount(null);
+    }
   };
 
   return (
@@ -85,7 +124,8 @@ export default function BuyScreen() {
             <Animated.View key={opt.amount} entering={FadeInDown.delay(150 + i * 50).duration(400)}>
               <TouchableOpacity
                 style={styles.blackBtn}
-                onPress={() => handleDeposit(opt.url)}
+                onPress={() => handleDeposit(opt.amount, opt.url)}
+                disabled={loadingAmount !== null}
                 activeOpacity={0.9}
               >
                 <View style={styles.blackBtnLeft}>
@@ -93,7 +133,11 @@ export default function BuyScreen() {
                   <Text style={styles.blackBtnDesc}>{opt.desc}</Text>
                 </View>
                 <View style={styles.blackBtnRight}>
-                  <ChevronRight size={18} color="#94a3b8" />
+                  {loadingAmount === opt.amount ? (
+                    <ActivityIndicator size="small" color="#94a3b8" />
+                  ) : (
+                    <ChevronRight size={18} color="#94a3b8" />
+                  )}
                 </View>
               </TouchableOpacity>
             </Animated.View>

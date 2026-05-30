@@ -50,6 +50,8 @@ Add these exact origins to Google:
 ```text
 http://localhost:3000
 http://127.0.0.1:3000
+https://wallex.qzz.io
+https://www.wallex.qzz.io
 https://wallex.online
 https://www.wallex.online
 https://crypto-main-bice.vercel.app
@@ -89,7 +91,7 @@ http://localhost:3000
 When the domain is live, change Site URL to:
 
 ```text
-https://wallex.online
+https://wallex.qzz.io
 ```
 
 Additional Redirect URLs:
@@ -97,6 +99,8 @@ Additional Redirect URLs:
 ```text
 http://localhost:3000/**
 http://127.0.0.1:3000/**
+https://wallex.qzz.io/**
+https://www.wallex.qzz.io/**
 https://wallex.online/**
 https://www.wallex.online/**
 https://crypto-main-bice.vercel.app/**

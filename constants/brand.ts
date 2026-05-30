@@ -5,9 +5,9 @@ export const USD_TO_KES = 129.19;
 
 export const WALLEX_BRAND = {
   name: 'Wallex',
-  siteName: 'wallex.online',
-  domain: 'https://wallex.online',
-  websiteUrl: 'https://wallex.online',
+  siteName: 'wallex.qzz.io',
+  domain: 'https://wallex.qzz.io',
+  websiteUrl: 'https://wallex.qzz.io',
   supportEmail: 'wallexcrypto@proton.me',
   logoUrl: 'https://i.postimg.cc/C5xPhJz5/wallex-logo.jpg',
   heroImageUrl: 'https://i.postimg.cc/PJvDQ87K/dc2a020fb68e8bd16b808612feaf0954.jpg',
